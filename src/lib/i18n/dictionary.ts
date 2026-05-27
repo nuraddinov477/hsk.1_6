@@ -53,9 +53,16 @@ type AppSection = {
     micDenied: string; unsupported: string; recording: string;
   };
   exam: {
-    title: string; intro: string; start: string; question: string;
-    of: string; finish: string; finalScore: string; retry: string;
-    backToDashboard: string;
+    title: string; subtitle: string; selectLevel: string;
+    questions: string; minutes: string; passMark: string;
+    start: string; listeningSection: string; readingSection: string;
+    playAudio: string; replay: string; question: string; of: string;
+    timeLeft: string; next: string; submit: string; submitConfirm: string;
+    finish: string;
+    passed: string; failed: string; finalScore: string; outOf: string;
+    breakdown: string; reviewAnswers: string; hideReview: string;
+    yourAnswer: string; correctAnswer: string; noAnswer: string;
+    retry: string; backToDashboard: string;
   };
   levelFilter: { label: string; all: string };
   common: { back: string; next: string; finish: string; continue: string; points: string };
@@ -291,10 +298,17 @@ export const dictionaries: Record<Locale, Dict> = {
         recording: "Yozilmoqda...",
       },
       exam: {
-        title: "Sinov imtihon", intro: "10 ta savol, tasodifiy. Tayyormisiz?",
-        start: "Boshlash", question: "Savol", of: "/", finish: "Yakunlash",
-        finalScore: "Sizning natijangiz:", retry: "Qayta urinish",
-        backToDashboard: "Bosh sahifaga",
+        title: "Sinov imtihon", subtitle: "Darajani tanlang va vaqt chegarali HSK mock imtihonini topshiring.",
+        selectLevel: "Darajani tanlang", questions: "savol", minutes: "daqiqa", passMark: "O'tish",
+        start: "Imtihonni boshlash", listeningSection: "Tinglash (听力)", readingSection: "O'qish (阅读)",
+        playAudio: "Audioni eshitish", replay: "Qayta eshitish", question: "Savol", of: "/",
+        timeLeft: "Qolgan vaqt", next: "Keyingi", submit: "Topshirish",
+        submitConfirm: "Imtihonni topshirasizmi? Bundan keyin javoblarni o'zgartira olmaysiz.",
+        finish: "Yakunlash",
+        passed: "O'tdingiz 🎉", failed: "O'ta olmadingiz", finalScore: "Sizning natijangiz:", outOf: "dan",
+        breakdown: "Bo'limlar bo'yicha", reviewAnswers: "Javoblarni ko'rish", hideReview: "Yashirish",
+        yourAnswer: "Sizning javobingiz", correctAnswer: "To'g'ri javob", noAnswer: "Javob berilmadi",
+        retry: "Qayta urinish", backToDashboard: "Bosh sahifaga",
       },
       levelFilter: { label: "Daraja:", all: "Hammasi" },
       common: { back: "Orqaga", next: "Keyingi", finish: "Yakunlash", continue: "Davom etish", points: "ball" },
@@ -479,10 +493,17 @@ export const dictionaries: Record<Locale, Dict> = {
         recording: "Запись...",
       },
       exam: {
-        title: "Пробный экзамен", intro: "10 случайных вопросов. Готовы?",
-        start: "Начать", question: "Вопрос", of: "/", finish: "Закончить",
-        finalScore: "Ваш результат:", retry: "Попробовать снова",
-        backToDashboard: "На главную",
+        title: "Пробный экзамен", subtitle: "Выберите уровень и пройдите пробный экзамен HSK с таймером.",
+        selectLevel: "Выберите уровень", questions: "вопросов", minutes: "мин", passMark: "Проходной",
+        start: "Начать экзамен", listeningSection: "Аудирование (听力)", readingSection: "Чтение (阅读)",
+        playAudio: "Прослушать", replay: "Ещё раз", question: "Вопрос", of: "/",
+        timeLeft: "Осталось", next: "Дальше", submit: "Завершить",
+        submitConfirm: "Завершить экзамен? После этого изменить ответы нельзя.",
+        finish: "Закончить",
+        passed: "Сдано 🎉", failed: "Не сдано", finalScore: "Ваш результат:", outOf: "из",
+        breakdown: "По разделам", reviewAnswers: "Посмотреть ответы", hideReview: "Скрыть",
+        yourAnswer: "Ваш ответ", correctAnswer: "Правильный ответ", noAnswer: "Нет ответа",
+        retry: "Попробовать снова", backToDashboard: "На главную",
       },
       levelFilter: { label: "Уровень:", all: "Все" },
       common: { back: "Назад", next: "Дальше", finish: "Закончить", continue: "Продолжить", points: "баллов" },
@@ -667,10 +688,17 @@ export const dictionaries: Record<Locale, Dict> = {
         recording: "Recording...",
       },
       exam: {
-        title: "Mock exam", intro: "10 random questions. Ready?",
-        start: "Start", question: "Question", of: "of", finish: "Finish",
-        finalScore: "Your score:", retry: "Try again",
-        backToDashboard: "Back to home",
+        title: "Mock exam", subtitle: "Pick a level and take a timed HSK mock exam.",
+        selectLevel: "Select level", questions: "questions", minutes: "min", passMark: "Pass",
+        start: "Start exam", listeningSection: "Listening (听力)", readingSection: "Reading (阅读)",
+        playAudio: "Play audio", replay: "Replay", question: "Question", of: "of",
+        timeLeft: "Time left", next: "Next", submit: "Submit",
+        submitConfirm: "Submit the exam? You can't change answers afterwards.",
+        finish: "Finish",
+        passed: "Passed 🎉", failed: "Not passed", finalScore: "Your score:", outOf: "of",
+        breakdown: "Section breakdown", reviewAnswers: "Review answers", hideReview: "Hide",
+        yourAnswer: "Your answer", correctAnswer: "Correct answer", noAnswer: "No answer",
+        retry: "Try again", backToDashboard: "Back to home",
       },
       levelFilter: { label: "Level:", all: "All" },
       common: { back: "Back", next: "Next", finish: "Finish", continue: "Continue", points: "points" },
