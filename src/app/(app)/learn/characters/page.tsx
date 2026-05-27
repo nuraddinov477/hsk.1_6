@@ -2,13 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Play, RotateCcw, Check } from "lucide-react";
-import { CHARACTERS, levelsIn } from "@/lib/learn-data";
+import { levelsIn } from "@/lib/learn-data";
+import { useContent } from "@/lib/content/provider";
 import { useT } from "@/lib/i18n/provider";
 import { useLocale } from "@/lib/i18n/provider";
 import { addXp, getProgress, markCharacterLearned } from "@/lib/learn-store";
 import { LevelFilter, useStudyLevel } from "@/components/app/LevelFilter";
-
-const AVAILABLE_LEVELS = levelsIn(CHARACTERS);
 
 export default function CharactersPage() {
   const t = useT();
@@ -21,9 +20,12 @@ export default function CharactersPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const writerRef = useRef<any>(null);
 
+  const { characters } = useContent();
+  const AVAILABLE_LEVELS = useMemo(() => levelsIn(characters), [characters]);
+
   const chars = useMemo(
-    () => (level === "all" ? CHARACTERS : CHARACTERS.filter((c) => c.hskLevel === level)),
-    [level],
+    () => (level === "all" ? characters : characters.filter((c) => c.hskLevel === level)),
+    [level, characters],
   );
 
   // Reset to the first character whenever the level filter changes.

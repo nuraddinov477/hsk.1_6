@@ -2,12 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Check, X, ChevronRight, Volume2 } from "lucide-react";
-import { PASSAGES, levelsIn } from "@/lib/learn-data";
+import { levelsIn } from "@/lib/learn-data";
+import { useContent } from "@/lib/content/provider";
 import { useLocale, useT } from "@/lib/i18n/provider";
 import { addXp, markLessonComplete } from "@/lib/learn-store";
 import { LevelFilter, useStudyLevel } from "@/components/app/LevelFilter";
-
-const AVAILABLE_LEVELS = levelsIn(PASSAGES);
 
 function speak(text: string) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
@@ -25,10 +24,12 @@ export default function ReadingPage() {
   const [index, setIndex] = useState(0);
   const [showTranslation, setShowTranslation] = useState(false);
   const [picked, setPicked] = useState<number | null>(null);
+  const { passages: allPassages } = useContent();
+  const AVAILABLE_LEVELS = useMemo(() => levelsIn(allPassages), [allPassages]);
 
   const passages = useMemo(
-    () => (level === "all" ? PASSAGES : PASSAGES.filter((p) => p.hskLevel === level)),
-    [level],
+    () => (level === "all" ? allPassages : allPassages.filter((p) => p.hskLevel === level)),
+    [level, allPassages],
   );
 
   // Restart from the first passage whenever the level filter changes.

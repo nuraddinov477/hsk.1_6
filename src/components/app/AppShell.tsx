@@ -5,11 +5,12 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Home, BookOpenText, Layers, Headphones, FileText, PenLine,
-  Mic, GraduationCap, LogOut, Flame, Sparkles, Menu, X,
+  Mic, GraduationCap, LogOut, Flame, Sparkles, Menu, X, Shield,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useT } from "@/lib/i18n/provider";
 import { getProgress, pullFromServer, type Progress } from "@/lib/learn-store";
+import { ContentProvider } from "@/lib/content/provider";
 import { LocaleSwitcher } from "@/components/marketing/LocaleSwitcher";
 
 const NAV_ICONS = {
@@ -43,6 +44,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const t = useT();
   const [progress, setProgress] = useState<Progress | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
@@ -64,6 +66,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // On login, pull progress + SRS from the DB and merge into localStorage.
   useEffect(() => {
     if (user) void pullFromServer();
+  }, [user]);
+
+  // Show the Admin link only to admins.
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/admin/whoami").then((r) => r.json()).then((d) => setIsAdmin(!!d.admin)).catch(() => {});
   }, [user]);
 
   if (loading || !user) {
@@ -148,10 +156,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })}
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
+                  pathname === "/admin"
+                    ? "bg-brand/10 text-brand"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <Shield className="h-4 w-4" /> Admin
+              </Link>
+            )}
           </nav>
         </aside>
 
-        <main className="min-w-0 flex-1">{children}</main>
+        <main className="min-w-0 flex-1">
+          <ContentProvider>{children}</ContentProvider>
+        </main>
       </div>
     </div>
   );

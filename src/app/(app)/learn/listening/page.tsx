@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Volume2, Check, X } from "lucide-react";
-import { VOCAB } from "@/lib/learn-data";
+import { type Vocab } from "@/lib/learn-data";
+import { useContent } from "@/lib/content/provider";
 import { useLocale, useT } from "@/lib/i18n/provider";
 import { addExamScore, addXp, markLessonComplete } from "@/lib/learn-store";
 
@@ -31,24 +32,25 @@ function shuffle<T>(arr: T[]): T[] {
 export default function ListeningPage() {
   const t = useT();
   const { locale } = useLocale();
-  const [questions, setQuestions] = useState<typeof VOCAB[number][]>([]);
-  const [optionsList, setOptionsList] = useState<typeof VOCAB[number][][]>([]);
+  const [questions, setQuestions] = useState<Vocab[]>([]);
+  const [optionsList, setOptionsList] = useState<Vocab[][]>([]);
   const [pos, setPos] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
   const [score, setScore] = useState(0);
   const [done, setDone] = useState(false);
   const [ttsOk, setTtsOk] = useState(true);
 
+  const { vocab } = useContent();
   const generate = useMemo(
     () => () => {
-      const qs = shuffle(VOCAB).slice(0, QUESTION_COUNT);
+      const qs = shuffle(vocab).slice(0, QUESTION_COUNT);
       const opts = qs.map((q) => {
-        const distractors = shuffle(VOCAB.filter((v) => v.id !== q.id)).slice(0, OPTION_COUNT - 1);
+        const distractors = shuffle(vocab.filter((v) => v.id !== q.id)).slice(0, OPTION_COUNT - 1);
         return shuffle([q, ...distractors]);
       });
       return { qs, opts };
     },
-    []
+    [vocab]
   );
 
   useEffect(() => {

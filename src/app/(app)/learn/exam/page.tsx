@@ -10,6 +10,7 @@ import {
   type BuiltExam,
   type ExamSection,
 } from "@/lib/exam-data";
+import { useContent } from "@/lib/content/provider";
 import { useLocale, useT } from "@/lib/i18n/provider";
 import { addExamScore, addXp, markLessonComplete } from "@/lib/learn-store";
 
@@ -55,6 +56,7 @@ export default function ExamPage() {
   const t = useT();
   const e = t.app.exam;
   const { locale } = useLocale();
+  const { vocab, passages, examQuestions } = useContent();
 
   const [phase, setPhase] = useState<Phase>("intro");
   const [exam, setExam] = useState<BuiltExam | null>(null);
@@ -64,10 +66,14 @@ export default function ExamPage() {
   const [showReview, setShowReview] = useState(false);
   const savedRef = useRef(false);
 
-  const levels = useMemo(() => examLevels(), []);
+  const examContent = useMemo(
+    () => ({ vocab, passages, authored: examQuestions }),
+    [vocab, passages, examQuestions],
+  );
+  const levels = useMemo(() => examLevels(examContent), [examContent]);
 
   function startLevel(level: number) {
-    const built = buildExam(level);
+    const built = buildExam(examContent, level);
     if (!built) return;
     setExam(built);
     setAnswers(new Array(built.questions.length).fill(null));

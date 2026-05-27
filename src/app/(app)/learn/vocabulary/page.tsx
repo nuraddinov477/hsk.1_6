@@ -2,12 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Volume2 } from "lucide-react";
-import { VOCAB, levelsIn } from "@/lib/learn-data";
+import { levelsIn } from "@/lib/learn-data";
+import { useContent } from "@/lib/content/provider";
 import { useLocale, useT } from "@/lib/i18n/provider";
 import { addXp, dueCardIds, markVocabLearned, reviewCard, type SrsGrade } from "@/lib/learn-store";
 import { LevelFilter, useStudyLevel } from "@/components/app/LevelFilter";
-
-const AVAILABLE_LEVELS = levelsIn(VOCAB);
 
 function speak(text: string) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
@@ -28,10 +27,12 @@ export default function VocabularyPage() {
   const [reviewedCount, setReviewedCount] = useState(0);
   const [started, setStarted] = useState(false);
   const [level] = useStudyLevel();
+  const { vocab } = useContent();
+  const AVAILABLE_LEVELS = useMemo(() => levelsIn(vocab), [vocab]);
 
   const allIds = useMemo(
-    () => (level === "all" ? VOCAB : VOCAB.filter((v) => v.hskLevel === level)).map((v) => v.id),
-    [level],
+    () => (level === "all" ? vocab : vocab.filter((v) => v.hskLevel === level)).map((v) => v.id),
+    [level, vocab],
   );
 
   useEffect(() => {
@@ -63,7 +64,7 @@ export default function VocabularyPage() {
   }
 
   const currentId = queue[pos];
-  const current = VOCAB.find((v) => v.id === currentId);
+  const current = vocab.find((v) => v.id === currentId);
 
   if (!started) {
     return (

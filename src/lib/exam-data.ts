@@ -1,12 +1,12 @@
-import { VOCAB, PASSAGES, type Translations } from "./learn-data";
+import { type Translations, type Vocab, type Passage } from "./learn-data";
 
 // ─── HSK mock-exam model ──────────────────────────────────────────────
 // A real HSK exam is split into timed sections (听力 Listening, 阅读 Reading)
 // and scored out of a fixed point total with a pass threshold. This module
-// defines that structure plus a generator that turns the existing study
-// content (VOCAB / PASSAGES) into exam questions, so HSK 1–3 work today.
-// To add real exam items later, push hand-written `ExamQuestion`s into
-// `AUTHORED_QUESTIONS` — they are merged with the generated ones per level.
+// defines that structure plus a generator that turns study content
+// (vocabulary / passages) into exam questions. Content is passed in by the
+// caller (merged built-in + DB content), so admin-added words and any
+// hand-written exam questions flow through automatically.
 
 export type ExamSection = "listening" | "reading";
 
@@ -44,6 +44,14 @@ export type ExamSpec = {
   blueprint: { section: ExamSection; count: number }[];
 };
 
+/** Content used to assemble an exam — built-in + DB, merged by the caller. */
+export type ExamContent = {
+  vocab: Vocab[];
+  passages: Passage[];
+  /** Hand-written exam questions (e.g. from the DB). */
+  authored: ExamQuestion[];
+};
+
 // Official HSK structure: HSK 1–2 are scored out of 200 (pass 120),
 // HSK 3–6 out of 300 (pass 180). Durations approximate the real test.
 export const EXAM_SPECS: Record<number, ExamSpec> = {
@@ -54,9 +62,6 @@ export const EXAM_SPECS: Record<number, ExamSpec> = {
   5: { level: 5, durationSec: 120 * 60, totalPoints: 300, passPoints: 180, blueprint: [{ section: "listening", count: 15 }, { section: "reading", count: 15 }] },
   6: { level: 6, durationSec: 135 * 60, totalPoints: 300, passPoints: 180, blueprint: [{ section: "listening", count: 20 }, { section: "reading", count: 20 }] },
 };
-
-/** Hand-written exam questions. Add real HSK items here over time. */
-export const AUTHORED_QUESTIONS: ExamQuestion[] = [];
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -71,16 +76,16 @@ const PROMPT_HEARD: Translations = { uz: "Nimani eshitdingiz?", ru: "Что вы
 const PROMPT_MEANING: Translations = { uz: "Bu so'z nimani anglatadi?", ru: "Что означает это слово?", en: "What does this word mean?" };
 
 /** Three meaning-distractors drawn from the same level first, then any level. */
-function distractors(excludeId: string, level: number): Translations[] {
-  const sameLevel = VOCAB.filter((v) => v.id !== excludeId && v.hskLevel === level);
-  const fallback = VOCAB.filter((v) => v.id !== excludeId);
+function distractors(vocab: Vocab[], excludeId: string, level: number): Translations[] {
+  const sameLevel = vocab.filter((v) => v.id !== excludeId && v.hskLevel === level);
+  const fallback = vocab.filter((v) => v.id !== excludeId);
   const pool = sameLevel.length >= 3 ? sameLevel : fallback;
   return shuffle(pool).slice(0, 3).map((v) => v.meaning);
 }
 
 /** Listening: hear a word → pick its meaning. */
-function generatedListening(level: number): ExamQuestion[] {
-  return VOCAB.filter((v) => v.hskLevel === level).map((v) => ({
+function generatedListening(vocab: Vocab[], level: number): ExamQuestion[] {
+  return vocab.filter((v) => v.hskLevel === level).map((v) => ({
     id: `gen-l-${v.id}`,
     level,
     section: "listening" as const,
@@ -88,14 +93,14 @@ function generatedListening(level: number): ExamQuestion[] {
     prompt: PROMPT_HEARD,
     choices: shuffle([
       { label: v.meaning, correct: true },
-      ...distractors(v.id, level).map((label) => ({ label })),
+      ...distractors(vocab, v.id, level).map((label) => ({ label })),
     ]),
   }));
 }
 
-/** Reading: passage comprehension built from PASSAGES. */
-function generatedReadingPassages(level: number): ExamQuestion[] {
-  return PASSAGES.filter((p) => p.hskLevel === level).map((p) => ({
+/** Reading: passage comprehension built from passages. */
+function generatedReadingPassages(passages: Passage[], level: number): ExamQuestion[] {
+  return passages.filter((p) => p.hskLevel === level).map((p) => ({
     id: `gen-rp-${p.id}`,
     level,
     section: "reading" as const,
@@ -107,8 +112,8 @@ function generatedReadingPassages(level: number): ExamQuestion[] {
 }
 
 /** Reading: see a word → pick its meaning. */
-function generatedReadingWords(level: number): ExamQuestion[] {
-  return VOCAB.filter((v) => v.hskLevel === level).map((v) => ({
+function generatedReadingWords(vocab: Vocab[], level: number): ExamQuestion[] {
+  return vocab.filter((v) => v.hskLevel === level).map((v) => ({
     id: `gen-rw-${v.id}`,
     level,
     section: "reading" as const,
@@ -117,25 +122,25 @@ function generatedReadingWords(level: number): ExamQuestion[] {
     prompt: PROMPT_MEANING,
     choices: shuffle([
       { label: v.meaning, correct: true },
-      ...distractors(v.id, level).map((label) => ({ label })),
+      ...distractors(vocab, v.id, level).map((label) => ({ label })),
     ]),
   }));
 }
 
-function allQuestions(level: number): ExamQuestion[] {
+function allQuestions(content: ExamContent, level: number): ExamQuestion[] {
   return [
-    ...AUTHORED_QUESTIONS.filter((q) => q.level === level),
-    ...generatedListening(level),
-    ...generatedReadingPassages(level),
-    ...generatedReadingWords(level),
+    ...content.authored.filter((q) => q.level === level),
+    ...generatedListening(content.vocab, level),
+    ...generatedReadingPassages(content.passages, level),
+    ...generatedReadingWords(content.vocab, level),
   ];
 }
 
 /** HSK levels that currently have at least one exam question, ascending. */
-export function examLevels(): number[] {
+export function examLevels(content: ExamContent): number[] {
   return Object.keys(EXAM_SPECS)
     .map(Number)
-    .filter((lv) => allQuestions(lv).length > 0)
+    .filter((lv) => allQuestions(content, lv).length > 0)
     .sort((a, b) => a - b);
 }
 
@@ -147,10 +152,10 @@ export type BuiltExam = {
 };
 
 /** Assemble one randomized exam for a level, clamped to available content. */
-export function buildExam(level: number): BuiltExam | null {
+export function buildExam(content: ExamContent, level: number): BuiltExam | null {
   const spec = EXAM_SPECS[level];
   if (!spec) return null;
-  const pool = allQuestions(level);
+  const pool = allQuestions(content, level);
   const questions: ExamQuestion[] = [];
   const sections: ExamSection[] = [];
   for (const block of spec.blueprint) {
