@@ -104,7 +104,7 @@ export default function ExamPage() {
     if (phase !== "result" || !result || savedRef.current) return;
     savedRef.current = true;
     const pct = Math.round((result.total / result.totalPoints) * 100);
-    addExamScore(pct);
+    addExamScore(pct, exam?.spec.level);
     addXp(Math.round(result.total / 10));
     markLessonComplete(`exam:hsk${exam?.spec.level}:${Date.now()}`);
   }, [phase, result, exam]);

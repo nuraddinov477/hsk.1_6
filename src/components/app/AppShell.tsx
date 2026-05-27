@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useT } from "@/lib/i18n/provider";
-import { getProgress, type Progress } from "@/lib/learn-store";
+import { getProgress, pullFromServer, type Progress } from "@/lib/learn-store";
 import { LocaleSwitcher } from "@/components/marketing/LocaleSwitcher";
 
 const NAV_ICONS = {
@@ -60,6 +60,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
+
+  // On login, pull progress + SRS from the DB and merge into localStorage.
+  useEffect(() => {
+    if (user) void pullFromServer();
+  }, [user]);
 
   if (loading || !user) {
     return (

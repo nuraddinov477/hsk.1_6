@@ -55,6 +55,7 @@ export function saveProgress(p: Progress) {
   safeWrite(PROGRESS_KEY, p);
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("hskgo:progress"));
+    pushProgress();
   }
 }
 
@@ -95,10 +96,11 @@ export function markLessonComplete(key: string) {
   return next;
 }
 
-export function addExamScore(score: number) {
+export function addExamScore(score: number, level?: number) {
   const p = getProgress();
   const next = { ...p, examScores: [...p.examScores, { date: new Date().toISOString(), score }] };
   saveProgress(next);
+  postJSON("/api/exam-results", "POST", { score, level });
   return next;
 }
 
@@ -143,6 +145,7 @@ export function getSrs(): SrsState {
 
 export function saveSrs(s: SrsState) {
   safeWrite(SRS_KEY, s);
+  pushSrs();
 }
 
 export type SrsGrade = "again" | "hard" | "good" | "easy";
@@ -199,4 +202,72 @@ export function dueCardIds(allIds: string[]): string[] {
   }
   // due first, then up to 5 new cards per session
   return [...due, ...newOnes.slice(0, 5)];
+}
+
+// ─── Server sync (Supabase via /api) ───
+// localStorage stays the synchronous source of truth for instant reads;
+// writes are mirrored to the DB (debounced), and on login we pull + merge
+// so progress follows the user across devices. All of this no-ops cleanly
+// when logged out or offline — the app keeps working on localStorage alone.
+
+function postJSON(url: string, method: string, body: unknown) {
+  if (typeof window === "undefined") return;
+  void fetch(url, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }).catch(() => {});
+}
+
+let progressTimer: ReturnType<typeof setTimeout> | null = null;
+let srsTimer: ReturnType<typeof setTimeout> | null = null;
+
+function pushProgress() {
+  if (typeof window === "undefined") return;
+  if (progressTimer) clearTimeout(progressTimer);
+  progressTimer = setTimeout(() => postJSON("/api/progress", "PUT", getProgress()), 800);
+}
+
+function pushSrs() {
+  if (typeof window === "undefined") return;
+  if (srsTimer) clearTimeout(srsTimer);
+  srsTimer = setTimeout(() => postJSON("/api/srs", "PUT", getSrs()), 800);
+}
+
+function mergeProgress(local: Progress, remote: Progress): Progress {
+  const union = (a: string[] = [], b: string[] = []) => Array.from(new Set([...a, ...b]));
+  return {
+    xp: Math.max(local.xp ?? 0, remote.xp ?? 0),
+    streak: Math.max(local.streak ?? 0, remote.streak ?? 0),
+    lastActiveDate: [local.lastActiveDate, remote.lastActiveDate].filter(Boolean).sort().pop() ?? null,
+    charactersLearned: union(local.charactersLearned, remote.charactersLearned),
+    vocabLearned: union(local.vocabLearned, remote.vocabLearned),
+    completedLessons: union(local.completedLessons, remote.completedLessons),
+    // exam_results is the server's canonical list; fall back to local when empty.
+    examScores: (remote.examScores?.length ? remote.examScores : local.examScores) ?? [],
+  };
+}
+
+function mergeSrs(local: SrsState, remote: SrsState): SrsState {
+  const out: SrsState = { ...remote };
+  for (const [id, card] of Object.entries(local)) {
+    const r = out[id];
+    if (!r || card.dueAt > r.dueAt) out[id] = card; // keep the most recently scheduled
+  }
+  return out;
+}
+
+/** On login: pull server state, merge with local (no data loss), push the union back. */
+export async function pullFromServer() {
+  if (typeof window === "undefined") return;
+  try {
+    const [pRes, sRes] = await Promise.all([fetch("/api/progress"), fetch("/api/srs")]);
+    if (pRes.ok) safeWrite(PROGRESS_KEY, mergeProgress(getProgress(), await pRes.json()));
+    if (sRes.ok) safeWrite(SRS_KEY, mergeSrs(getSrs(), await sRes.json()));
+    window.dispatchEvent(new CustomEvent("hskgo:progress"));
+    postJSON("/api/progress", "PUT", getProgress());
+    postJSON("/api/srs", "PUT", getSrs());
+  } catch {
+    /* offline or logged out — localStorage keeps working */
+  }
 }
