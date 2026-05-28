@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Check, X, Volume2 } from "lucide-react";
+import { Check, X, Volume2, Sparkles } from "lucide-react";
 import { CHARACTERS } from "@/lib/learn-data";
 import { useLocale, useT } from "@/lib/i18n/provider";
 import { addExamScore, addXp, markLessonComplete } from "@/lib/learn-store";
@@ -108,11 +109,17 @@ export default function WritingPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-end justify-between">
+      <header className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t.app.writing.title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{pos + 1} / {questions.length}</p>
         </div>
+        <Link
+          href="/learn/writing/essay"
+          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-brand bg-brand/5 px-3 text-xs font-medium text-brand hover:bg-brand/10"
+        >
+          <Sparkles className="h-3.5 w-3.5" /> AI Insho baholash
+        </Link>
       </header>
 
       <div className="rounded-2xl border border-border bg-background p-8 text-center">

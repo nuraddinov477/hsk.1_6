@@ -1,10 +1,36 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Mic, Square, Play, RotateCcw, Check, Volume2, ChevronRight } from "lucide-react";
+import { Mic, Square, Play, RotateCcw, Check, Volume2, ChevronRight, Sparkles } from "lucide-react";
 import { PASSAGES } from "@/lib/learn-data";
 import { useLocale, useT } from "@/lib/i18n/provider";
 import { addXp, markLessonComplete } from "@/lib/learn-store";
+
+// Browser SpeechRecognition type (vendor-prefixed in Chrome/Edge).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SR = any;
+
+function getSpeechRecognition(): SR | null {
+  if (typeof window === "undefined") return null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const w = window as any;
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
+
+// Count how many Chinese characters from `expected` match the ones in `heard`
+// in left-to-right order. Tolerant of word boundaries and missing chars.
+function pronunciationScore(expected: string, heard: string): { pct: number; matched: number; total: number } {
+  const a = Array.from(expected).filter((c) => /[一-鿿]/.test(c));
+  const b = Array.from(heard).filter((c) => /[一-鿿]/.test(c));
+  if (a.length === 0) return { pct: 0, matched: 0, total: 0 };
+  let matched = 0;
+  let bi = 0;
+  for (const ch of a) {
+    const at = b.indexOf(ch, bi);
+    if (at !== -1) { matched++; bi = at + 1; }
+  }
+  return { pct: Math.round((matched / a.length) * 100), matched, total: a.length };
+}
 
 function speak(text: string) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
@@ -24,11 +50,14 @@ export default function SpeakingPage() {
   const [status, setStatus] = useState<Status>("idle");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [transcript, setTranscript] = useState("");
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const srRef = useRef<SR | null>(null);
 
   const sentence = PASSAGES[index];
+  const score = transcript ? pronunciationScore(sentence.text, transcript) : null;
 
   useEffect(() => {
     return () => {
@@ -40,6 +69,7 @@ export default function SpeakingPage() {
 
   async function start() {
     setError(null);
+    setTranscript("");
     if (typeof navigator === "undefined" || !navigator.mediaDevices || !window.MediaRecorder) {
       setError(t.app.speaking.unsupported);
       return;
@@ -60,6 +90,30 @@ export default function SpeakingPage() {
       };
       rec.start();
       recorderRef.current = rec;
+
+      // Run live speech-to-text in parallel — available in Chrome/Edge
+      // and recent Safari. Silently skip if missing.
+      const SR = getSpeechRecognition();
+      if (SR) {
+        const sr = new SR();
+        sr.lang = "zh-CN";
+        sr.continuous = true;
+        sr.interimResults = true;
+        let combined = "";
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        sr.onresult = (ev: any) => {
+          let interim = "";
+          for (let i = ev.resultIndex; i < ev.results.length; i++) {
+            const r = ev.results[i];
+            if (r.isFinal) combined += r[0].transcript;
+            else interim += r[0].transcript;
+          }
+          setTranscript(combined + interim);
+        };
+        sr.onerror = () => { /* silent — recording continues */ };
+        try { sr.start(); srRef.current = sr; } catch { /* ignore */ }
+      }
+
       setStatus("recording");
     } catch {
       setError(t.app.speaking.micDenied);
@@ -68,11 +122,14 @@ export default function SpeakingPage() {
 
   function stop() {
     recorderRef.current?.stop();
+    try { srRef.current?.stop(); } catch { /* ignore */ }
+    srRef.current = null;
   }
 
   function reset() {
     if (audioUrl) URL.revokeObjectURL(audioUrl);
     setAudioUrl(null);
+    setTranscript("");
     setStatus("idle");
   }
 
@@ -131,6 +188,32 @@ export default function SpeakingPage() {
             <audio src={audioUrl} controls className="mx-auto block w-full max-w-md">
               <track kind="captions" />
             </audio>
+
+            {transcript && score && (
+              <div className="mx-auto max-w-md rounded-2xl border border-border bg-muted/30 p-4 text-left">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase text-brand">
+                    <Sparkles className="h-3.5 w-3.5" /> Talaffuz tahlili
+                  </div>
+                  <div className={`text-2xl font-bold tabular-nums ${
+                    score.pct >= 80 ? "text-green-600" :
+                    score.pct >= 50 ? "text-yellow-600" :
+                                       "text-red-600"
+                  }`}>{score.pct}%</div>
+                </div>
+                <div className="mt-2 text-xs text-muted-foreground">Eshitildi:</div>
+                <p className="font-cn mt-1 text-base">{transcript}</p>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {score.matched} / {score.total} ieroglif to&apos;g&apos;ri talaffuz qilindi
+                </div>
+              </div>
+            )}
+            {!transcript && (
+              <p className="text-xs text-muted-foreground">
+                (Brauzeringiz talaffuz tahlilini qo&apos;llamaydi — Chrome yoki Edge tavsiya etiladi)
+              </p>
+            )}
+
             <div className="flex flex-wrap items-center justify-center gap-2">
               <button onClick={() => { const a = document.querySelector("audio"); a?.play(); }} className="inline-flex h-10 items-center gap-1.5 rounded-full border border-border px-4 text-sm font-medium hover:bg-muted">
                 <Play className="h-3.5 w-3.5" /> {t.app.speaking.playback}

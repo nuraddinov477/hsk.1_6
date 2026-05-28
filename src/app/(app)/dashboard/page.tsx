@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { useT } from "@/lib/i18n/provider";
 import { getProgress, resetProgress, type Progress } from "@/lib/learn-store";
 import { CHARACTERS, VOCAB } from "@/lib/learn-data";
+import { DailyMissions } from "@/components/app/DailyMissions";
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -72,6 +73,8 @@ export default function DashboardPage() {
           <ProgressRow label={t.app.dashboard.vocabLearned} pct={vocabPct} />
         </div>
       </div>
+
+      <DailyMissions />
 
       <div className="rounded-2xl border border-brand/40 bg-brand/5 p-6">
         <div className="flex items-center justify-between gap-4">

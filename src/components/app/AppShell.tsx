@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Home, BookOpenText, Layers, Headphones, FileText, PenLine,
-  Mic, GraduationCap, LogOut, Flame, Sparkles, Menu, X, Shield,
+  Mic, GraduationCap, LogOut, Flame, Sparkles, Menu, X, Shield, Trophy,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useT } from "@/lib/i18n/provider";
@@ -190,6 +190,18 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })}
+            {flags["feature.leaderboard"] !== false && (
+              <Link
+                href="/learn/leaderboard"
+                className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
+                  pathname === "/learn/leaderboard"
+                    ? "bg-brand/10 text-brand"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <Trophy className="h-4 w-4" /> Reyting
+              </Link>
+            )}
             {isAdmin && (
               <Link
                 href="/admin"
