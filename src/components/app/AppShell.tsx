@@ -10,7 +10,9 @@ import {
 import { useAuth } from "@/lib/auth";
 import { useT } from "@/lib/i18n/provider";
 import { getProgress, pullFromServer, type Progress } from "@/lib/learn-store";
+import { startSession, endSession } from "@/lib/tracker";
 import { ContentProvider } from "@/lib/content/provider";
+import { FeatureFlagsProvider, useFlags } from "@/lib/flags/provider";
 import { LocaleSwitcher } from "@/components/marketing/LocaleSwitcher";
 
 const NAV_ICONS = {
@@ -37,10 +39,32 @@ const NAV_HREF = {
 
 const NAV_KEYS = ["dashboard", "characters", "vocabulary", "listening", "reading", "writing", "speaking", "exam"] as const;
 
+// Maps a sidebar nav key to its feature_flag — dashboard is always visible.
+const NAV_FLAG: Partial<Record<(typeof NAV_KEYS)[number], string>> = {
+  characters: "module.characters",
+  vocabulary: "module.vocabulary",
+  listening:  "module.listening",
+  reading:    "module.reading",
+  writing:    "module.writing",
+  speaking:   "module.speaking",
+  exam:       "module.exam",
+};
+
 export function AppShell({ children }: { children: React.ReactNode }) {
+  return (
+    <FeatureFlagsProvider>
+      <ContentProvider>
+        <AppShellInner>{children}</AppShellInner>
+      </ContentProvider>
+    </FeatureFlagsProvider>
+  );
+}
+
+function AppShellInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, loading, logout } = useAuth();
+  const flags = useFlags();
   const t = useT();
   const [progress, setProgress] = useState<Progress | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -66,6 +90,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // On login, pull progress + SRS from the DB and merge into localStorage.
   useEffect(() => {
     if (user) void pullFromServer();
+  }, [user]);
+
+  // Track "user is on the platform" — starts a session, heartbeats while open,
+  // closes on tab unload. Powers the admin Statistics tab.
+  useEffect(() => {
+    if (!user) return;
+    void startSession();
+    return () => endSession();
   }, [user]);
 
   // Show the Admin link only to admins.
@@ -138,6 +170,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         >
           <nav className="space-y-1">
             {NAV_KEYS.map((key) => {
+              const flag = NAV_FLAG[key];
+              if (flag && flags[flag] === false) return null;
               const Icon = NAV_ICONS[key];
               const href = NAV_HREF[key];
               const active = pathname === href || (key !== "dashboard" && pathname?.startsWith(href));
@@ -171,9 +205,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
         </aside>
 
-        <main className="min-w-0 flex-1">
-          <ContentProvider>{children}</ContentProvider>
-        </main>
+        <main className="min-w-0 flex-1">{children}</main>
       </div>
     </div>
   );

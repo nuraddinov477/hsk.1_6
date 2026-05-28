@@ -1,14 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Trash2, Plus, ShieldAlert } from "lucide-react";
+import { Trash2, Plus, ShieldAlert, BarChart3, Users as UsersIcon, ToggleLeft, BookOpenText, Layers, FileText, GraduationCap } from "lucide-react";
+import { UsersTab } from "./UsersTab";
+import { StatsTab } from "./StatsTab";
+import { FlagsTab } from "./FlagsTab";
 
-type Tab = "vocabulary" | "characters" | "passages" | "exam_questions";
-const TABS: { key: Tab; label: string }[] = [
-  { key: "vocabulary", label: "Lug'at" },
-  { key: "characters", label: "Ieroglif" },
-  { key: "passages", label: "O'qish matni" },
-  { key: "exam_questions", label: "Imtihon savoli" },
+type Tab = "stats" | "users" | "flags" | "vocabulary" | "characters" | "passages" | "exam_questions";
+const TABS: { key: Tab; label: string; icon: typeof BarChart3 }[] = [
+  { key: "stats",          label: "Statistika",     icon: BarChart3 },
+  { key: "users",          label: "Foydalanuvchilar", icon: UsersIcon },
+  { key: "flags",          label: "Sozlamalar",     icon: ToggleLeft },
+  { key: "vocabulary",     label: "Lug'at",          icon: BookOpenText },
+  { key: "characters",     label: "Ieroglif",       icon: Layers },
+  { key: "passages",       label: "O'qish matni",   icon: FileText },
+  { key: "exam_questions", label: "Imtihon savoli", icon: GraduationCap },
 ];
 
 type ML = { uz: string; ru: string; en: string };
@@ -337,7 +343,7 @@ function ExamAdmin() {
 
 export default function AdminPage() {
   const [admin, setAdmin] = useState<boolean | null>(null);
-  const [tab, setTab] = useState<Tab>("vocabulary");
+  const [tab, setTab] = useState<Tab>("stats");
 
   useEffect(() => {
     fetch("/api/admin/whoami")
@@ -368,19 +374,26 @@ export default function AdminPage() {
       </header>
 
       <div className="flex flex-wrap gap-1.5">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`h-9 rounded-full px-4 text-sm font-medium transition ${
-              tab === t.key ? "bg-brand text-brand-foreground" : "border border-border bg-background text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+        {TABS.map((t) => {
+          const Icon = t.icon;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-sm font-medium transition ${
+                tab === t.key ? "bg-brand text-brand-foreground" : "border border-border bg-background text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {t.label}
+            </button>
+          );
+        })}
       </div>
 
+      {tab === "stats" && <StatsTab />}
+      {tab === "users" && <UsersTab />}
+      {tab === "flags" && <FlagsTab />}
       {tab === "vocabulary" && <VocabularyAdmin />}
       {tab === "characters" && <CharactersAdmin />}
       {tab === "passages" && <PassagesAdmin />}

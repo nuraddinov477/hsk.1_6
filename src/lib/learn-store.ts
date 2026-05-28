@@ -1,5 +1,7 @@
 "use client";
 
+import { trackEvent } from "@/lib/tracker";
+
 const PROGRESS_KEY = "hskgo.progress";
 const SRS_KEY = "hskgo.srs";
 const LEVEL_KEY = "hskgo.level";
@@ -69,6 +71,7 @@ export function addXp(amount: number) {
   }
   const next: Progress = { ...p, xp: p.xp + amount, streak, lastActiveDate: today };
   saveProgress(next);
+  trackEvent("xp_gained", { amount, total: next.xp });
   return next;
 }
 
@@ -77,6 +80,7 @@ export function markCharacterLearned(hanzi: string) {
   if (p.charactersLearned.includes(hanzi)) return p;
   const next = { ...p, charactersLearned: [...p.charactersLearned, hanzi] };
   saveProgress(next);
+  trackEvent("character_learned", { hanzi });
   return next;
 }
 
@@ -85,6 +89,7 @@ export function markVocabLearned(id: string) {
   if (p.vocabLearned.includes(id)) return p;
   const next = { ...p, vocabLearned: [...p.vocabLearned, id] };
   saveProgress(next);
+  trackEvent("vocab_learned", { id });
   return next;
 }
 
@@ -93,6 +98,7 @@ export function markLessonComplete(key: string) {
   if (p.completedLessons.includes(key)) return p;
   const next = { ...p, completedLessons: [...p.completedLessons, key] };
   saveProgress(next);
+  trackEvent("lesson_completed", { key });
   return next;
 }
 
@@ -101,6 +107,7 @@ export function addExamScore(score: number, level?: number) {
   const next = { ...p, examScores: [...p.examScores, { date: new Date().toISOString(), score }] };
   saveProgress(next);
   postJSON("/api/exam-results", "POST", { score, level });
+  trackEvent("exam_submitted", { score, level });
   return next;
 }
 
