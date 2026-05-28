@@ -2,34 +2,71 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowRight, RotateCcw } from "lucide-react";
+import { RotateCcw, Sparkles, Flame, BookOpenText, Layers, Trophy, Clock } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useT } from "@/lib/i18n/provider";
-import { getProgress, resetProgress, type Progress } from "@/lib/learn-store";
-import { CHARACTERS, VOCAB } from "@/lib/learn-data";
+import { getProgress, getStudyLevel, resetProgress, type LevelChoice, type Progress } from "@/lib/learn-store";
 import { DailyMissions } from "@/components/app/DailyMissions";
+import { ActivityHeatmap } from "@/components/app/ActivityHeatmap";
+import { RankWidget } from "@/components/app/RankWidget";
+import { HskLevelProgress } from "@/components/app/HskLevelProgress";
+import { AchievementsGrid } from "@/components/app/AchievementsGrid";
+import { ContinueCard } from "@/components/app/ContinueCard";
+
+type DashData = {
+  heatmap: { date: string; xp: number }[];
+  weekly: { rank: number | null; xp: number; delta: number };
+  alltimeRank: number | null;
+  minutesThisWeek: number;
+  achievements: {
+    key: string; title: string; emoji: string; unlocked: boolean;
+    progress?: { now: number; goal: number };
+  }[];
+};
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const t = useT();
   const [progress, setProgress] = useState<Progress | null>(null);
+  const [level, setLevel] = useState<LevelChoice>("all");
+  const [data, setData] = useState<DashData | null>(null);
 
   useEffect(() => {
-    function refresh() { setProgress(getProgress()); }
+    function refresh() { setProgress(getProgress()); setLevel(getStudyLevel()); }
     refresh();
     window.addEventListener("hskgo:progress", refresh);
-    return () => window.removeEventListener("hskgo:progress", refresh);
+    window.addEventListener("hskgo:level", refresh);
+    return () => {
+      window.removeEventListener("hskgo:progress", refresh);
+      window.removeEventListener("hskgo:level", refresh);
+    };
+  }, []);
+
+  // Fetch aggregated server-side stats. Re-poll periodically.
+  useEffect(() => {
+    let alive = true;
+    async function load() {
+      const r = await fetch("/api/dashboard");
+      if (!alive || !r.ok) return;
+      setData(await r.json());
+    }
+    void load();
+    const id = setInterval(load, 60_000);
+    const onProgress = () => void load();
+    window.addEventListener("hskgo:progress", onProgress);
+    return () => {
+      alive = false;
+      clearInterval(id);
+      window.removeEventListener("hskgo:progress", onProgress);
+    };
   }, []);
 
   const xp = progress?.xp ?? 0;
   const streak = progress?.streak ?? 0;
   const charsLearned = progress?.charactersLearned.length ?? 0;
   const vocabLearned = progress?.vocabLearned.length ?? 0;
-
-  const charsTotal = CHARACTERS.length;
-  const vocabTotal = VOCAB.length;
-  const charsPct = Math.round((charsLearned / charsTotal) * 100);
-  const vocabPct = Math.round((vocabLearned / vocabTotal) * 100);
+  const minutes = data?.minutesThisWeek ?? 0;
+  const weekly = data?.weekly;
 
   const hour = new Date().getHours();
   const greet = hour < 12 ? t.app.dashboard.goodMorning : hour < 18 ? t.app.dashboard.goodAfternoon : t.app.dashboard.goodEvening;
@@ -40,6 +77,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* ─── Hero ─── */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
@@ -56,42 +94,46 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label={t.app.dashboard.xp} value={xp} />
-        <Stat label={t.app.dashboard.streakDays} value={streak} accent="orange" />
-        <Stat label={t.app.dashboard.charactersLearned} value={`${charsLearned} / ${charsTotal}`} />
-        <Stat label={t.app.dashboard.vocabLearned} value={`${vocabLearned} / ${vocabTotal}`} />
+      {/* ─── KPI strip — 6 stats ─── */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <Stat icon={Sparkles} label={t.app.dashboard.xp}       value={xp}            accent="brand" />
+        <Stat icon={Flame}    label={t.app.dashboard.streakDays} value={streak}      accent="orange" />
+        <Stat icon={BookOpenText} label={t.app.dashboard.vocabLearned}      value={vocabLearned} />
+        <Stat icon={Layers}   label={t.app.dashboard.charactersLearned}     value={charsLearned} />
+        <Stat icon={Clock}    label="Bu hafta vaqt" value={`${minutes} daq`} />
+        <Stat icon={Trophy}   label="Bu hafta o'rin" value={weekly?.rank ? `#${weekly.rank}` : "—"} accent="brand" />
       </div>
 
-      <div className="rounded-2xl border border-border bg-background p-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{t.app.dashboard.levelProgress}</h2>
-          <span className="text-xs text-muted-foreground">{charsPct}% · {vocabPct}%</span>
+      {/* ─── Smart "continue" card ─── */}
+      <ContinueCard vocabLearned={progress?.vocabLearned ?? []} level={level} />
+
+      {/* ─── Heatmap + Rank ─── */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          {data ? <ActivityHeatmap data={data.heatmap} /> : <Skeleton h={140} />}
         </div>
-        <div className="mt-4 space-y-3">
-          <ProgressRow label={t.app.dashboard.charactersLearned} pct={charsPct} />
-          <ProgressRow label={t.app.dashboard.vocabLearned} pct={vocabPct} />
+        <div>
+          {weekly ? (
+            <RankWidget
+              weekRank={weekly.rank}
+              weekXp={weekly.xp}
+              delta={weekly.delta}
+              alltimeRank={data?.alltimeRank ?? null}
+            />
+          ) : <Skeleton h={140} />}
         </div>
       </div>
 
+      {/* ─── Per-HSK breakdown + achievements ─── */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <HskLevelProgress vocabLearned={progress?.vocabLearned ?? []} />
+        {data ? <AchievementsGrid items={data.achievements} /> : <Skeleton h={200} />}
+      </div>
+
+      {/* ─── Daily missions ─── */}
       <DailyMissions />
 
-      <div className="rounded-2xl border border-brand/40 bg-brand/5 p-6">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <div className="text-xs font-semibold uppercase text-brand">{t.app.dashboard.dailyMission}</div>
-            <p className="mt-1 text-lg font-semibold">{t.app.dashboard.dailyMissionDesc}</p>
-          </div>
-          <Link
-            href="/learn/vocabulary"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-medium text-brand-foreground hover:opacity-90"
-          >
-            {t.app.dashboard.continueLearning}
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-      </div>
-
+      {/* ─── Modules grid (compact) ─── */}
       <div>
         <h2 className="text-lg font-semibold">{t.app.dashboard.modules}</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -107,25 +149,20 @@ export default function DashboardPage() {
   );
 }
 
-function Stat({ label, value, accent }: { label: string; value: string | number; accent?: "orange" }) {
+function Stat({ icon: Icon, label, value, accent }: {
+  icon: typeof Sparkles; label: string; value: string | number; accent?: "brand" | "orange";
+}) {
+  const colour =
+    accent === "orange" ? "bg-orange-500/10 text-orange-500" :
+    accent === "brand"  ? "bg-brand/10 text-brand" :
+                          "bg-muted text-muted-foreground";
   return (
     <div className="rounded-2xl border border-border bg-background p-4">
+      <div className={`mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg ${colour}`}>
+        <Icon className="h-4 w-4" />
+      </div>
       <div className="text-xs text-muted-foreground">{label}</div>
-      <div className={`mt-1 text-2xl font-bold ${accent === "orange" ? "text-orange-500" : ""}`}>{value}</div>
-    </div>
-  );
-}
-
-function ProgressRow({ label, pct }: { label: string; pct: number }) {
-  return (
-    <div>
-      <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-        <span>{label}</span>
-        <span>{pct}%</span>
-      </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-        <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${pct}%` }} />
-      </div>
+      <div className="mt-0.5 text-2xl font-bold tabular-nums">{value}</div>
     </div>
   );
 }
@@ -145,4 +182,8 @@ function ModuleCard({ href, hanzi, title, desc }: { href: string; hanzi: string;
       </div>
     </Link>
   );
+}
+
+function Skeleton({ h }: { h: number }) {
+  return <div className="animate-pulse rounded-2xl border border-border bg-muted/30" style={{ height: h }} />;
 }
