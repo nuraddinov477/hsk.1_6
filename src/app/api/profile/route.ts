@@ -9,7 +9,9 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const { data: profile } = await supabase
-    .from("profiles").select("name, role, blocked, created_at").eq("id", user.id).maybeSingle();
+    .from("profiles")
+    .select("name, role, blocked, created_at, current_level, target_level, goal, target_days, plan_started_at, onboarded_at")
+    .eq("id", user.id).maybeSingle();
   return NextResponse.json({
     id: user.id,
     email: user.email,
@@ -17,6 +19,14 @@ export async function GET() {
     role: profile?.role ?? "user",
     blocked: !!profile?.blocked,
     createdAt: profile?.created_at ?? null,
+    plan: {
+      current_level:   profile?.current_level   ?? null,
+      target_level:    profile?.target_level    ?? null,
+      goal:            profile?.goal            ?? null,
+      target_days:     profile?.target_days     ?? null,
+      plan_started_at: profile?.plan_started_at ?? null,
+      onboarded_at:    profile?.onboarded_at    ?? null,
+    },
   });
 }
 

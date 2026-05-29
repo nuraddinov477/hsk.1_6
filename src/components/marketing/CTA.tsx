@@ -24,7 +24,7 @@ export function CTA() {
               {t.cta.subtitle}
             </p>
             <Link
-              href="/register"
+              href="/start"
               className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-brand px-6 text-base font-medium text-brand-foreground transition hover:opacity-90"
             >
               {t.cta.button}

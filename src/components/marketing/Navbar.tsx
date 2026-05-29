@@ -32,7 +32,7 @@ export function Navbar() {
             {t.nav.login}
           </Link>
           <Link
-            href="/register"
+            href="/start"
             className="inline-flex h-9 items-center justify-center rounded-full bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90"
           >
             {t.nav.startFree}

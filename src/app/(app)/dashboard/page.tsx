@@ -12,6 +12,7 @@ import { RankWidget } from "@/components/app/RankWidget";
 import { HskLevelProgress } from "@/components/app/HskLevelProgress";
 import { AchievementsGrid } from "@/components/app/AchievementsGrid";
 import { ContinueCard } from "@/components/app/ContinueCard";
+import { PlanWidget } from "@/components/app/PlanWidget";
 
 type DashData = {
   heatmap: { date: string; xp: number }[];
@@ -103,6 +104,9 @@ export default function DashboardPage() {
         <Stat icon={Clock}    label="Bu hafta vaqt" value={`${minutes} daq`} />
         <Stat icon={Trophy}   label="Bu hafta o'rin" value={weekly?.rank ? `#${weekly.rank}` : "—"} accent="brand" />
       </div>
+
+      {/* ─── Personalised plan from onboarding wizard ─── */}
+      <PlanWidget vocabLearnedCount={vocabLearned} />
 
       {/* ─── Smart "continue" card ─── */}
       <ContinueCard vocabLearned={progress?.vocabLearned ?? []} level={level} />
