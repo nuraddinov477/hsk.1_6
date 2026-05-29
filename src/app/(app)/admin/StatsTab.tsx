@@ -1,25 +1,50 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, Activity, Zap, GraduationCap, ShieldX, Library } from "lucide-react";
+import {
+  Users, Activity, Zap, GraduationCap, ShieldX, Library,
+  Flame, BookOpen, Languages, FileText,
+} from "lucide-react";
+import {
+  ChartCard, AreaChart, BarsChart, HBarsChart, DonutChart, StackedBars, PALETTE,
+} from "./charts";
 
 type Stats = {
   totals: {
     users: number; blockedUsers: number; adminUsers: number;
     sessionsToday: number; activeNow: number; examsTaken: number;
     vocabulary: number; characters: number; passages: number; examQuestions: number;
+    totalXp: number; totalVocab: number; totalChars: number; totalStreak: number;
   };
-  dau: { date: string; users: number }[];
+  dau: { date: string; users: number; sessions: number }[];
+  sessionsByHour: number[];
+  eventBreakdown: { type: string; count: number }[];
+  currentLevelDist: { level: number; count: number }[];
+  targetLevelDist: { level: number; count: number }[];
+  goalDist: { goal: string; count: number }[];
+  contentByLevel: { level: number; vocab: number; characters: number }[];
   recentEvents: { type: string; payload: unknown; createdAt: string; email: string }[];
   topUsers: { email: string; xp: number; streak: number; vocab_learned: number; characters_learned: number }[];
 };
 
 const EVENT_LABELS: Record<string, string> = {
-  vocab_learned:     "so'z o'rganildi",
-  character_learned: "ieroglif o'rganildi",
-  lesson_completed:  "dars tugatildi",
-  exam_submitted:    "imtihon topshirildi",
+  vocab_learned:     "So'z o'rganildi",
+  character_learned: "Ieroglif o'rganildi",
+  lesson_completed:  "Dars tugatildi",
+  exam_submitted:    "Imtihon topshirildi",
   xp_gained:         "XP olindi",
+  session_start:     "Sessiya boshlandi",
+  session_end:       "Sessiya tugadi",
+};
+
+const GOAL_LABELS: Record<string, string> = {
+  work:    "Ish",
+  study:   "O'qish",
+  exam:    "Imtihon",
+  travel:  "Sayohat",
+  culture: "Madaniyat",
+  other:   "Boshqa",
+  unset:   "Belgilanmagan",
 };
 
 function relativeTime(iso: string) {
@@ -30,7 +55,9 @@ function relativeTime(iso: string) {
   return new Date(iso).toLocaleDateString();
 }
 
-function Kpi({ icon: Icon, label, value, accent }: { icon: typeof Users; label: string; value: number | string; accent?: string }) {
+function Kpi({
+  icon: Icon, label, value, accent, hint,
+}: { icon: typeof Users; label: string; value: number | string; accent?: string; hint?: string }) {
   return (
     <div className="rounded-2xl border border-border bg-background p-4">
       <div className={`mb-2 inline-flex h-9 w-9 items-center justify-center rounded-lg ${accent ?? "bg-brand/10 text-brand"}`}>
@@ -38,6 +65,7 @@ function Kpi({ icon: Icon, label, value, accent }: { icon: typeof Users; label: 
       </div>
       <div className="text-2xl font-bold tabular-nums">{value}</div>
       <div className="text-xs text-muted-foreground">{label}</div>
+      {hint && <div className="mt-0.5 text-[10px] text-muted-foreground/80">{hint}</div>}
     </div>
   );
 }
@@ -62,86 +90,159 @@ export function StatsTab() {
   if (loading) return <p className="text-sm text-muted-foreground">Yuklanmoqda…</p>;
   if (!data)   return <p className="text-sm text-red-600">Statistika yuklanmadi.</p>;
 
-  const maxDau = Math.max(1, ...data.dau.map((d) => d.users));
+  const { totals } = data;
+
+  // Prep chart series.
+  const hourSeries  = data.sessionsByHour.map((v, h) => ({ label: `${h}:00`, value: v }));
+  const eventSeries = data.eventBreakdown.map((e, i) => ({
+    label: EVENT_LABELS[e.type] ?? e.type,
+    value: e.count,
+    color: PALETTE[i % PALETTE.length],
+  }));
+  const goalSeries = data.goalDist.map((g) => ({
+    label: GOAL_LABELS[g.goal] ?? g.goal,
+    value: g.count,
+  }));
+  const currentLvlSeries = data.currentLevelDist
+    .filter((l) => l.count > 0)
+    .map((l) => ({ label: l.level === 0 ? "Boshlovchi" : `HSK ${l.level}`, value: l.count }));
+  const targetLvlSeries = data.targetLevelDist
+    .filter((l) => l.count > 0)
+    .map((l) => ({ label: `HSK ${l.level}`, value: l.count }));
+  const contentLvlSeries = data.contentByLevel
+    .filter((c) => c.vocab + c.characters > 0)
+    .map((c) => ({
+      label: c.level === 0 ? "—" : `HSK ${c.level}`,
+      values: { vocab: c.vocab, characters: c.characters },
+    }));
+  const topUserSeries = data.topUsers.map((u) => ({
+    label: u.email.split("@")[0],
+    value: u.xp,
+    hint: `🔥${u.streak} · 📚${u.vocab_learned}`,
+  }));
+  const contentPie = [
+    { label: "Lug'at",      value: totals.vocabulary },
+    { label: "Ierogliflar", value: totals.characters },
+    { label: "Matnlar",     value: totals.passages },
+    { label: "Imtihon savollari", value: totals.examQuestions },
+  ];
 
   return (
     <div className="space-y-6">
+      {/* ── KPI grid ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <Kpi icon={Users}          label="Foydalanuvchilar" value={data.totals.users} />
-        <Kpi icon={Activity}       label="Hozir onlayn"     value={data.totals.activeNow}     accent="bg-green-500/10 text-green-600" />
-        <Kpi icon={Zap}            label="Bugungi sessiya"  value={data.totals.sessionsToday} />
-        <Kpi icon={GraduationCap}  label="Imtihonlar"       value={data.totals.examsTaken} />
-        <Kpi icon={ShieldX}        label="Bloklangan"       value={data.totals.blockedUsers} accent="bg-red-500/10 text-red-600" />
-        <Kpi icon={Library}        label="Lug'at + ieroglif" value={data.totals.vocabulary + data.totals.characters} />
+        <Kpi icon={Users}         label="Foydalanuvchilar" value={totals.users} hint={`${totals.adminUsers} admin`} />
+        <Kpi icon={Activity}      label="Hozir onlayn"     value={totals.activeNow} accent="bg-green-500/10 text-green-600" hint="oxirgi 5 daq" />
+        <Kpi icon={Zap}           label="Bugungi sessiya"  value={totals.sessionsToday} />
+        <Kpi icon={GraduationCap} label="Imtihonlar"       value={totals.examsTaken} />
+        <Kpi icon={ShieldX}       label="Bloklangan"       value={totals.blockedUsers} accent="bg-red-500/10 text-red-600" />
+        <Kpi icon={Library}       label="Kontent jami"     value={totals.vocabulary + totals.characters + totals.passages} />
       </div>
 
-      {/* DAU bar chart — pure CSS, 30 days */}
-      <div className="rounded-2xl border border-border bg-background p-4">
-        <h2 className="mb-3 text-sm font-semibold">So'nggi 30 kunlik faollik (DAU)</h2>
-        <div className="flex h-24 items-end gap-[3px]">
-          {data.dau.map((d) => (
-            <div key={d.date} className="group relative flex-1">
-              <div
-                className="w-full rounded-t bg-brand/30 hover:bg-brand transition"
-                style={{ height: `${(d.users / maxDau) * 100}%` }}
-              />
-              <div className="pointer-events-none absolute bottom-full left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-[10px] text-background group-hover:block">
-                {d.date}: {d.users}
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-          <span>{data.dau[0]?.date}</span>
-          <span>{data.dau[data.dau.length - 1]?.date}</span>
-        </div>
+      {/* ── Aggregate progress KPIs ──────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Kpi icon={Flame}     label="Umumiy XP"        value={totals.totalXp.toLocaleString()}    accent="bg-orange-500/10 text-orange-600" />
+        <Kpi icon={BookOpen}  label="O'rganilgan so'z" value={totals.totalVocab.toLocaleString()} accent="bg-blue-500/10 text-blue-600" />
+        <Kpi icon={Languages} label="O'rganilgan ieroglif" value={totals.totalChars.toLocaleString()} accent="bg-violet-500/10 text-violet-600" />
+        <Kpi icon={FileText}  label="Streak yig'indisi" value={totals.totalStreak.toLocaleString()} accent="bg-green-500/10 text-green-600" />
       </div>
 
+      {/* ── Activity charts ──────────────────────────────────────────── */}
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* Recent activity */}
-        <div className="rounded-2xl border border-border bg-background p-4">
-          <h2 className="mb-3 text-sm font-semibold">So'nggi faollik</h2>
-          {data.recentEvents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Hali hech narsa qilinmagan.</p>
-          ) : (
-            <ul className="max-h-80 space-y-2 overflow-y-auto pr-1 text-sm">
-              {data.recentEvents.map((e, i) => (
-                <li key={i} className="flex items-center justify-between gap-3 border-b border-border/40 pb-1.5 last:border-0">
-                  <span className="min-w-0 truncate">
-                    <b className="font-medium">{e.email}</b>{" "}
-                    <span className="text-muted-foreground">{EVENT_LABELS[e.type] ?? e.type}</span>
-                  </span>
-                  <span className="shrink-0 text-xs text-muted-foreground">{relativeTime(e.createdAt)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <ChartCard title="So'nggi 30 kunlik faollik" hint="DAU & sessiyalar" span="full">
+          <AreaChart data={data.dau} />
+        </ChartCard>
 
-        {/* Top users */}
-        <div className="rounded-2xl border border-border bg-background p-4">
-          <h2 className="mb-3 text-sm font-semibold">Top foydalanuvchilar (XP)</h2>
-          {data.topUsers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Hali XP olgan foydalanuvchi yo'q.</p>
+        <ChartCard title="Faollik vaqti (soat bo'yicha)" hint="UTC · oxirgi 30 kun">
+          <BarsChart data={hourSeries} labelEvery={3} />
+        </ChartCard>
+
+        <ChartCard title="Tadbirlar turlari" hint="oxirgi 30 kun">
+          {eventSeries.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Hali tadbirlar yo&apos;q.</p>
           ) : (
-            <ol className="space-y-2 text-sm">
-              {data.topUsers.map((u, i) => (
-                <li key={u.email} className="flex items-center justify-between gap-3">
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold tabular-nums">
-                      {i + 1}
-                    </span>
-                    <span className="truncate">{u.email}</span>
-                  </span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {u.xp} XP · 🔥 {u.streak} · 📚 {u.vocab_learned}
-                  </span>
-                </li>
-              ))}
-            </ol>
+            <HBarsChart data={eventSeries} />
           )}
-        </div>
+        </ChartCard>
       </div>
+
+      {/* ── Distributions ────────────────────────────────────────────── */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <ChartCard title="Joriy daraja" hint="foydalanuvchilar profilidan">
+          {currentLvlSeries.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Ma&apos;lumot yo&apos;q.</p>
+          ) : (
+            <DonutChart data={currentLvlSeries} centerLabel={{ value: totals.users, hint: "jami" }} />
+          )}
+        </ChartCard>
+
+        <ChartCard title="Maqsad daraja" hint="qaysi HSK'gacha">
+          {targetLvlSeries.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Ma&apos;lumot yo&apos;q.</p>
+          ) : (
+            <DonutChart data={targetLvlSeries} />
+          )}
+        </ChartCard>
+
+        <ChartCard title="Maqsad turi" hint="nima uchun o'rganadi">
+          {goalSeries.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Ma&apos;lumot yo&apos;q.</p>
+          ) : (
+            <DonutChart data={goalSeries} />
+          )}
+        </ChartCard>
+      </div>
+
+      {/* ── Content + top users ──────────────────────────────────────── */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ChartCard title="Kontent — HSK darajalari bo'yicha" hint="lug'at + ieroglif">
+          {contentLvlSeries.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Hali kontent yo&apos;q.</p>
+          ) : (
+            <StackedBars
+              data={contentLvlSeries}
+              keys={[
+                { key: "vocab",      label: "Lug'at",      color: PALETTE[5] },
+                { key: "characters", label: "Ierogliflar", color: PALETTE[0] },
+              ]}
+            />
+          )}
+        </ChartCard>
+
+        <ChartCard title="Kontent turi bo'yicha" hint="jami">
+          <DonutChart
+            data={contentPie}
+            centerLabel={{ value: contentPie.reduce((s, c) => s + c.value, 0), hint: "jami yozuv" }}
+          />
+        </ChartCard>
+
+        <ChartCard title="Top foydalanuvchilar (XP)" span="full">
+          {topUserSeries.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Hali XP olgan foydalanuvchi yo&apos;q.</p>
+          ) : (
+            <HBarsChart data={topUserSeries} formatValue={(n) => `${n.toLocaleString()} XP`} />
+          )}
+        </ChartCard>
+      </div>
+
+      {/* ── Recent events feed ───────────────────────────────────────── */}
+      <ChartCard title="So'nggi tadbirlar" hint="real-vaqt · 30 s yangilanadi">
+        {data.recentEvents.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Hali hech narsa qilinmagan.</p>
+        ) : (
+          <ul className="max-h-72 space-y-2 overflow-y-auto pr-1 text-sm">
+            {data.recentEvents.map((e, i) => (
+              <li key={i} className="flex items-center justify-between gap-3 border-b border-border/40 pb-1.5 last:border-0">
+                <span className="min-w-0 truncate">
+                  <b className="font-medium">{e.email}</b>{" "}
+                  <span className="text-muted-foreground">{EVENT_LABELS[e.type] ?? e.type}</span>
+                </span>
+                <span className="shrink-0 text-xs text-muted-foreground">{relativeTime(e.createdAt)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </ChartCard>
     </div>
   );
 }
