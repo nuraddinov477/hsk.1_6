@@ -33,5 +33,11 @@ export async function POST(
 
   const { error } = await supabase.from("profiles").update(update).eq("id", targetId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // Audit log — best effort.
+  await supabase.from("user_events").insert({
+    user_id: user.id,
+    event_type: body.blocked ? "admin_block" : "admin_unblock",
+    payload: { type: "profiles", id: targetId, reason: body.reason ?? null },
+  });
   return NextResponse.json({ ok: true });
 }

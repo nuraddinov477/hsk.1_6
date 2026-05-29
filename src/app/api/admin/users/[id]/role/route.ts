@@ -27,5 +27,10 @@ export async function POST(
 
   const { error } = await supabase.from("profiles").update({ role: body.role }).eq("id", targetId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  await supabase.from("user_events").insert({
+    user_id: user.id,
+    event_type: "admin_role_change",
+    payload: { type: "profiles", id: targetId, role: body.role },
+  });
   return NextResponse.json({ ok: true });
 }
