@@ -66,7 +66,7 @@ export default function LoginPage() {
       footer={
         <>
           {l.noAccount}{" "}
-          <Link href="/register" className="font-medium text-brand hover:underline">
+          <Link href="/start" className="font-medium text-brand hover:underline">
             {l.register}
           </Link>
         </>
