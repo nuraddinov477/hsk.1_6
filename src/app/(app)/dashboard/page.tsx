@@ -13,6 +13,7 @@ import { HskLevelProgress } from "@/components/app/HskLevelProgress";
 import { AchievementsGrid } from "@/components/app/AchievementsGrid";
 import { ContinueCard } from "@/components/app/ContinueCard";
 import { PlanWidget } from "@/components/app/PlanWidget";
+import { NextLessonCard } from "@/components/app/NextLessonCard";
 
 type DashData = {
   heatmap: { date: string; xp: number }[];
@@ -107,6 +108,9 @@ export default function DashboardPage() {
 
       {/* ─── Personalised plan from onboarding wizard ─── */}
       <PlanWidget vocabLearnedCount={vocabLearned} />
+
+      {/* ─── Next lesson from curriculum (hidden if no content yet) ─── */}
+      <NextLessonCard />
 
       {/* ─── Smart "continue" card ─── */}
       <ContinueCard vocabLearned={progress?.vocabLearned ?? []} level={level} />

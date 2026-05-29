@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Home, BookOpenText, Layers, Headphones, FileText, PenLine,
-  Mic, GraduationCap, LogOut, Flame, Sparkles, Menu, X, Shield, Trophy, User as UserIcon,
+  Mic, GraduationCap, LogOut, Flame, Sparkles, Menu, X, Shield, Trophy, User as UserIcon, BookOpen,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useT } from "@/lib/i18n/provider";
@@ -200,6 +200,16 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })}
+            <Link
+              href="/learn/lessons"
+              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
+                pathname?.startsWith("/learn/lessons")
+                  ? "bg-brand/10 text-brand"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              <BookOpen className="h-4 w-4" /> Darslar
+            </Link>
             {flags["feature.leaderboard"] !== false && (
               <Link
                 href="/learn/leaderboard"
