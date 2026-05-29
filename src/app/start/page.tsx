@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft, ArrowRight, Check, Sparkles, Target, Calendar,
   Briefcase, GraduationCap, ScrollText, Plane, Heart, MoreHorizontal,
@@ -99,23 +99,33 @@ export default function StartWizardPage() {
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [hydrated, setHydrated] = useState(false);
 
+  // Inline auth fields live on the final (timeline) step for anonymous users —
+  // no separate "create account" screen. Submit collects timeline + credentials
+  // and runs register → persistPlan → redirect to /profile in one shot.
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
   useEffect(() => { setDraft(readDraft()); setHydrated(true); }, []);
   useEffect(() => { if (hydrated) writeDraft(draft); }, [draft, hydrated]);
 
   const isLoggedIn = !!user;
-  // 4 question steps; the 5th step is auth (skipped if already signed in).
-  const totalSteps = isLoggedIn ? 4 : 5;
+  const totalSteps = 4;
   const progress = Math.round(((step + 1) / totalSteps) * 100);
 
   function back() { setStep((s) => Math.max(0, s - 1)); }
   function next() { setStep((s) => Math.min(totalSteps - 1, s + 1)); }
 
-  // Each step's "Next" button is disabled until the relevant answer is picked.
+  // Step 3 also gates on email + password when the user isn't signed in.
+  const emailLooksOk = /\S+@\S+\.\S+/.test(email.trim());
+  const passwordOk = password.length >= 8;
   const canAdvance =
     (step === 0 && draft.current_level !== null) ||
     (step === 1 && draft.target_level !== null && (draft.current_level === null || draft.target_level > draft.current_level)) ||
     (step === 2 && draft.goal !== null) ||
-    (step === 3 && draft.target_days !== null);
+    (step === 3 && draft.target_days !== null && (isLoggedIn || (emailLooksOk && passwordOk)));
 
   async function persistPlan() {
     const res = await fetch("/api/onboarding", {
@@ -127,6 +137,32 @@ export default function StartWizardPage() {
     // Mirror the target level to local content filter so dashboard paints instantly.
     if (draft.target_level) setStudyLevel(draft.target_level as 1 | 2 | 3 | 4 | 5 | 6);
     clearDraft();
+  }
+
+  // Single submit path for the final step: registers (if anon) and saves the
+  // plan, then takes the user to their freshly-provisioned profile.
+  async function finish() {
+    if (submitting) return;
+    setAuthError(null); setNotice(null);
+    setSubmitting(true);
+    try {
+      if (!isLoggedIn) {
+        // No "name" field on this flow — the profile page lets them set it later.
+        const { needsConfirmation } = await register("", email, password);
+        if (needsConfirmation) {
+          // Their session isn't live yet, so the plan can't be saved as them
+          // right now. They'll be sent through /start again after confirming.
+          setNotice(t.auth.confirmEmail);
+          return;
+        }
+      }
+      await persistPlan();
+      router.replace("/profile");
+    } catch (err) {
+      setAuthError(err instanceof AuthError ? t.auth.errors[err.code] : t.auth.errors.generic);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   // If they hit /start while already onboarded, send them straight to the app.
@@ -158,61 +194,51 @@ export default function StartWizardPage() {
           {step === 0 && <StepCurrent draft={draft} set={setDraft} />}
           {step === 1 && <StepTarget draft={draft} set={setDraft} />}
           {step === 2 && <StepGoal draft={draft} set={setDraft} />}
-          {step === 3 && <StepTimeline draft={draft} set={setDraft} />}
-          {step === 4 && !isLoggedIn && (
-            <StepAccount
+          {step === 3 && (
+            <StepTimeline
               draft={draft}
-              onDone={async () => {
-                await persistPlan();
-                router.replace("/dashboard");
-              }}
-              register={register}
-              t={t}
+              set={setDraft}
+              showAuth={!isLoggedIn}
+              email={email}
+              password={password}
+              setEmail={setEmail}
+              setPassword={setPassword}
+              authError={authError}
+              notice={notice}
+              passwordHint={t.auth.register.passwordHint}
             />
           )}
 
-          {/* Nav buttons. The auth step has its own submit button, so we hide
-              ours there. The last question step shows "Tugatish" which jumps
-              to auth (anon) or persists immediately (signed-in). */}
-          {step < 4 && (
-            <div className="mt-8 flex items-center justify-between gap-3">
+          <div className="mt-8 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={back}
+              disabled={step === 0 || submitting}
+              className="inline-flex h-11 items-center gap-1.5 rounded-full border border-border bg-background px-5 text-sm font-medium disabled:opacity-40"
+            >
+              <ArrowLeft className="h-4 w-4" /> Orqaga
+            </button>
+
+            {step < 3 ? (
               <button
                 type="button"
-                onClick={back}
-                disabled={step === 0}
-                className="inline-flex h-11 items-center gap-1.5 rounded-full border border-border bg-background px-5 text-sm font-medium disabled:opacity-40"
+                onClick={next}
+                disabled={!canAdvance}
+                className="inline-flex h-11 items-center gap-1.5 rounded-full bg-brand px-6 text-sm font-medium text-brand-foreground hover:opacity-90 disabled:opacity-50"
               >
-                <ArrowLeft className="h-4 w-4" /> Orqaga
+                Davom etish <ArrowRight className="h-4 w-4" />
               </button>
-
-              {step < 3 ? (
-                <button
-                  type="button"
-                  onClick={next}
-                  disabled={!canAdvance}
-                  className="inline-flex h-11 items-center gap-1.5 rounded-full bg-brand px-6 text-sm font-medium text-brand-foreground hover:opacity-90 disabled:opacity-50"
-                >
-                  Davom etish <ArrowRight className="h-4 w-4" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={!canAdvance}
-                  onClick={async () => {
-                    if (isLoggedIn) {
-                      await persistPlan();
-                      router.replace("/dashboard");
-                    } else {
-                      next();
-                    }
-                  }}
-                  className="inline-flex h-11 items-center gap-1.5 rounded-full bg-brand px-6 text-sm font-medium text-brand-foreground hover:opacity-90 disabled:opacity-50"
-                >
-                  {isLoggedIn ? "Rejani saqlash" : "Hisob yaratish"} <ArrowRight className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          )}
+            ) : (
+              <button
+                type="button"
+                disabled={!canAdvance || submitting}
+                onClick={finish}
+                className="inline-flex h-11 items-center gap-1.5 rounded-full bg-brand px-6 text-sm font-medium text-brand-foreground hover:opacity-90 disabled:opacity-50"
+              >
+                {submitting ? "Saqlanmoqda…" : "Rejani saqlash"} <ArrowRight className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         {!isLoggedIn && (
@@ -329,8 +355,17 @@ function StepGoal({ draft, set }: { draft: Draft; set: (d: Draft) => void }) {
   );
 }
 
-/* ──────────────────────────── Step 3 — Timeline ───────────────────────────── */
-function StepTimeline({ draft, set }: { draft: Draft; set: (d: Draft) => void }) {
+/* ──────────────────────────── Step 3 — Timeline + inline auth ─────────────── */
+function StepTimeline({
+  draft, set, showAuth, email, password, setEmail, setPassword, authError, notice, passwordHint,
+}: {
+  draft: Draft; set: (d: Draft) => void;
+  showAuth: boolean;
+  email: string; password: string;
+  setEmail: (v: string) => void; setPassword: (v: string) => void;
+  authError: string | null; notice: string | null;
+  passwordHint: string;
+}) {
   const wpd = wordsPerDay(draft);
   return (
     <div className="space-y-4">
@@ -362,79 +397,39 @@ function StepTimeline({ draft, set }: { draft: Draft; set: (d: Draft) => void })
           <span className="ml-2 text-muted-foreground">— bu sur&apos;atda HSK {draft.target_level} ga yetasiz.</span>
         </div>
       )}
-    </div>
-  );
-}
 
-/* ──────────────────────────── Step 4 — Account ────────────────────────────── */
-function StepAccount({
-  draft, onDone, register, t,
-}: {
-  draft: Draft;
-  onDone: () => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<{ needsConfirmation: boolean }>;
-  t: ReturnType<typeof useT>;
-}) {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    setError(null); setNotice(null);
-    if (!email.trim() || !password) { setError(t.auth.errors.missing_fields); return; }
-    setBusy(true);
-    try {
-      const { needsConfirmation } = await register(name, email, password);
-      if (needsConfirmation) {
-        // Email confirmation flow: their session isn't live yet, so the plan
-        // can't be saved as them. Stash it for /start to read after they
-        // confirm + log in.
-        setNotice(t.auth.confirmEmail);
-      } else {
-        await onDone();
-      }
-    } catch (err) {
-      setError(err instanceof AuthError ? t.auth.errors[err.code] : t.auth.errors.generic);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const goalLabel = GOAL_OPTIONS.find((g) => g.value === draft.goal)?.label ?? "—";
-  const timelineLabel = TIMELINE_OPTIONS.find((o) => o.days === draft.target_days)?.label ?? "—";
-
-  return (
-    <div className="space-y-5">
-      <Heading icon={Sparkles} eyebrow="Oxirgi qadam" title="Hisob yarating va boshlang" sub="Reja saqlanadi va birinchi darsingiz tayyor bo'ladi." />
-
-      <div className="rounded-2xl border border-brand/20 bg-brand/5 p-4 text-sm">
-        <div className="text-xs font-semibold uppercase tracking-wide text-brand">Sizning rejangiz</div>
-        <ul className="mt-2 space-y-1 text-muted-foreground">
-          <li>🎯 Maqsad: <span className="font-medium text-foreground">HSK {draft.target_level}</span></li>
-          <li>💡 Sabab: <span className="font-medium text-foreground">{goalLabel}</span></li>
-          <li>⏳ Muddat: <span className="font-medium text-foreground">{timelineLabel}</span></li>
-          <li>📚 Kunlik: <span className="font-medium text-foreground">≈ {wordsPerDay(draft)} so&apos;z</span></li>
-        </ul>
-      </div>
-
-      <form onSubmit={submit} className="space-y-3">
-        <Field label={t.auth.register.name} value={name} onChange={setName} type="text" placeholder="Sarvarbek" />
-        <Field label={t.auth.register.email} value={email} onChange={setEmail} type="email" placeholder="siz@example.com" />
-        <Field label={t.auth.register.password} value={password} onChange={setPassword} type="password" placeholder={t.auth.register.passwordHint} />
-        {error && <p className="text-xs text-red-600">{error}</p>}
-        {notice && <p className="rounded-lg bg-green-500/10 px-3 py-2 text-xs text-green-700 dark:text-green-400">{notice}</p>}
-        <button
-          type="submit"
-          disabled={busy}
-          className="inline-flex h-11 w-full items-center justify-center rounded-full bg-brand text-sm font-medium text-brand-foreground hover:opacity-90 disabled:opacity-60"
-        >
-          {busy ? "..." : t.auth.register.submit}
-        </button>
-      </form>
+      {/* Inline auth: appears only for anonymous visitors. Keeps the wizard at
+          a single 4-step flow — "Rejani saqlash" registers and persists in one
+          tap, then lands them on /profile. */}
+      {showAuth && draft.target_days !== null && (
+        <div className="mt-5 space-y-3 border-t border-border pt-5">
+          <div className="text-xs font-semibold text-muted-foreground">
+            Email va parol — keyingi safar shu bilan kirasiz
+          </div>
+          <Field
+            label="Email"
+            value={email}
+            onChange={setEmail}
+            type="email"
+            placeholder="siz@example.com"
+            autoComplete="email"
+          />
+          <Field
+            label="Parol"
+            value={password}
+            onChange={setPassword}
+            type="password"
+            placeholder={passwordHint}
+            autoComplete="new-password"
+          />
+          {authError && <p className="text-xs text-red-600">{authError}</p>}
+          {notice && (
+            <p className="rounded-lg bg-green-500/10 px-3 py-2 text-xs text-green-700 dark:text-green-400">
+              {notice}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -458,9 +453,10 @@ function Heading({
 }
 
 function Field({
-  label, value, onChange, type, placeholder,
+  label, value, onChange, type, placeholder, autoComplete,
 }: {
   label: string; value: string; onChange: (v: string) => void; type: string; placeholder: string;
+  autoComplete?: string;
 }) {
   return (
     <label className="block">
@@ -469,6 +465,7 @@ function Field({
         type={type}
         placeholder={placeholder}
         value={value}
+        autoComplete={autoComplete}
         onChange={(e) => onChange(e.target.value)}
         className="mt-1.5 block h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
       />
