@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Home, BookOpenText, Layers, Headphones, FileText, PenLine,
-  Mic, GraduationCap, LogOut, Flame, Sparkles, Menu, X, Shield, Trophy,
+  Mic, GraduationCap, LogOut, Flame, Sparkles, Menu, X, Shield, Trophy, User as UserIcon,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useT } from "@/lib/i18n/provider";
@@ -13,6 +13,7 @@ import { getProgress, pullFromServer, type Progress } from "@/lib/learn-store";
 import { startSession, endSession } from "@/lib/tracker";
 import { ContentProvider } from "@/lib/content/provider";
 import { FeatureFlagsProvider, useFlags } from "@/lib/flags/provider";
+import { AchievementToast } from "@/components/app/AchievementToast";
 import { LocaleSwitcher } from "@/components/marketing/LocaleSwitcher";
 
 const NAV_ICONS = {
@@ -153,6 +154,13 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
               <span className="text-xs text-muted-foreground">{t.app.dashboard.streakDays}</span>
             </div>
             <LocaleSwitcher />
+            <Link
+              href="/profile"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border hover:bg-muted"
+              aria-label="Profil"
+            >
+              <UserIcon className="h-4 w-4" />
+            </Link>
             <button
               type="button"
               onClick={handleLogout}
@@ -219,6 +227,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
         <main className="min-w-0 flex-1">{children}</main>
       </div>
+      <AchievementToast />
     </div>
   );
 }

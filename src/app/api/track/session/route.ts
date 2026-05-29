@@ -7,6 +7,8 @@ import { createClient } from "@/utils/supabase/server";
 //   DELETE → end the session (also sets last_seen_at to now)
 // All silently no-op when unauthenticated — tracker.ts treats that as "skip".
 
+const DAILY_BONUS_XP = 10;
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -19,7 +21,41 @@ export async function POST(request: Request) {
     .select("id")
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ id: data.id });
+
+  // Daily login bonus — first session of the UTC day grants +10 XP. Detected
+  // by checking if any xp_gained event with kind='daily_login' already exists
+  // for today. Best-effort: errors here don't block session creation.
+  let bonus = 0;
+  try {
+    const todayStart = new Date(); todayStart.setUTCHours(0, 0, 0, 0);
+    const { count } = await supabase
+      .from("user_events")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("event_type", "daily_login")
+      .gte("created_at", todayStart.toISOString());
+    if ((count ?? 0) === 0) {
+      await supabase.from("user_events").insert({
+        user_id: user.id,
+        event_type: "daily_login",
+        payload: { amount: DAILY_BONUS_XP },
+      });
+      await supabase.from("user_events").insert({
+        user_id: user.id,
+        event_type: "xp_gained",
+        payload: { amount: DAILY_BONUS_XP, source: "daily_login" },
+      });
+      const { data: up } = await supabase
+        .from("user_progress").select("xp").eq("user_id", user.id).maybeSingle();
+      const newXp = (up?.xp ?? 0) + DAILY_BONUS_XP;
+      await supabase.from("user_progress").upsert({
+        user_id: user.id, xp: newXp, updated_at: new Date().toISOString(),
+      });
+      bonus = DAILY_BONUS_XP;
+    }
+  } catch { /* swallow — session still works */ }
+
+  return NextResponse.json({ id: data.id, bonus });
 }
 
 export async function PUT(request: Request) {

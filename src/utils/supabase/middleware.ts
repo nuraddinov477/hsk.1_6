@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Routes that require an authenticated session.
-const PROTECTED_PREFIXES = ["/dashboard", "/learn", "/admin"];
+const PROTECTED_PREFIXES = ["/dashboard", "/learn", "/admin", "/profile"];
 // Auth pages a logged-in user has no reason to see (so we bounce them to the app).
 // NOTE: `/reset-password` is intentionally excluded — the recovery link logs the
 // user in *before* they reach it, so it must stay reachable while authenticated.

@@ -1,16 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Trash2, Plus, ShieldAlert, BarChart3, Users as UsersIcon, ToggleLeft, BookOpenText, Layers, FileText, GraduationCap } from "lucide-react";
+import { Trash2, Plus, ShieldAlert, BarChart3, Users as UsersIcon, ToggleLeft, BookOpenText, Layers, FileText, GraduationCap, Upload } from "lucide-react";
 import { UsersTab } from "./UsersTab";
 import { StatsTab } from "./StatsTab";
 import { FlagsTab } from "./FlagsTab";
+import { ImportTab } from "./ImportTab";
 
-type Tab = "stats" | "users" | "flags" | "vocabulary" | "characters" | "passages" | "exam_questions";
+type Tab = "stats" | "users" | "flags" | "import" | "vocabulary" | "characters" | "passages" | "exam_questions";
 const TABS: { key: Tab; label: string; icon: typeof BarChart3 }[] = [
   { key: "stats",          label: "Statistika",     icon: BarChart3 },
   { key: "users",          label: "Foydalanuvchilar", icon: UsersIcon },
   { key: "flags",          label: "Sozlamalar",     icon: ToggleLeft },
+  { key: "import",         label: "Ko'p yuklash",   icon: Upload },
   { key: "vocabulary",     label: "Lug'at",          icon: BookOpenText },
   { key: "characters",     label: "Ieroglif",       icon: Layers },
   { key: "passages",       label: "O'qish matni",   icon: FileText },
@@ -394,6 +396,7 @@ export default function AdminPage() {
       {tab === "stats" && <StatsTab />}
       {tab === "users" && <UsersTab />}
       {tab === "flags" && <FlagsTab />}
+      {tab === "import" && <ImportTab />}
       {tab === "vocabulary" && <VocabularyAdmin />}
       {tab === "characters" && <CharactersAdmin />}
       {tab === "passages" && <PassagesAdmin />}
