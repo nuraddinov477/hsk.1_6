@@ -15,6 +15,7 @@ import { ContentProvider } from "@/lib/content/provider";
 import { FeatureFlagsProvider, useFlags } from "@/lib/flags/provider";
 import { AchievementToast } from "@/components/app/AchievementToast";
 import { LocaleSwitcher } from "@/components/marketing/LocaleSwitcher";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const NAV_ICONS = {
   dashboard: Home,
@@ -153,6 +154,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
               <span>{streak}</span>
               <span className="text-xs text-muted-foreground">{t.app.dashboard.streakDays}</span>
             </div>
+            <ThemeToggle />
             <LocaleSwitcher />
             <Link
               href="/profile"

@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { User as UserIcon, Mail, Lock, Languages, Target, Save, LogOut, CheckCircle2 } from "lucide-react";
+import { User as UserIcon, Mail, Lock, Languages, Target, Save, LogOut, CheckCircle2, Sun, Moon, Monitor, Palette } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useLocale } from "@/lib/i18n/provider";
 import type { Locale } from "@/lib/i18n/dictionary";
+import { useTheme, type Theme } from "@/lib/theme/provider";
 import { getStudyLevel, setStudyLevel, type LevelChoice } from "@/lib/learn-store";
 
 type Profile = { id: string; email: string; name: string | null; role: string; createdAt: string | null };
@@ -16,6 +17,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const { logout, updatePassword } = useAuth();
   const { locale, setLocale } = useLocale();
+  const { theme, setTheme } = useTheme();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [name, setName] = useState("");
   const [studyLevel, setStudyLevelState] = useState<LevelChoice>("all");
@@ -158,6 +160,40 @@ export default function ProfilePage() {
               {l.toUpperCase()}
             </button>
           ))}
+        </div>
+      </section>
+
+      {/* ─── Mavzu (Light / Dark / System) ─── */}
+      <section className="space-y-3 rounded-2xl border border-border bg-background p-5">
+        <h2 className="flex items-center gap-2 text-sm font-semibold">
+          <Palette className="h-4 w-4 text-brand" /> Mavzu
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          Saytning rangini tanlang. &quot;Tizim&quot; — qurilmangiz sozlamasiga moslashadi.
+        </p>
+        <div className="grid grid-cols-3 gap-2">
+          {(
+            [
+              { value: "light",  label: "Yorug'", icon: Sun },
+              { value: "dark",   label: "Tungi",  icon: Moon },
+              { value: "system", label: "Tizim",  icon: Monitor },
+            ] as { value: Theme; label: string; icon: typeof Sun }[]
+          ).map(({ value, label, icon: Icon }) => {
+            const active = theme === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setTheme(value)}
+                className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border p-3 transition ${
+                  active ? "border-brand bg-brand/10 text-brand" : "border-border hover:bg-muted"
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                <span className="text-xs font-medium">{label}</span>
+              </button>
+            );
+          })}
         </div>
       </section>
 

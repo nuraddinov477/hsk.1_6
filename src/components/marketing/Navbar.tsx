@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useT } from "@/lib/i18n/provider";
 import { LocaleSwitcher } from "./LocaleSwitcher";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function Navbar() {
   const t = useT();
@@ -24,6 +25,7 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           <LocaleSwitcher />
           <Link
             href="/login"
