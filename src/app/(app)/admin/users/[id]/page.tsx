@@ -287,7 +287,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                       </span>
                     )}
                   </span>
-                  <span className="shrink-0 text-xs font-medium text-muted-foreground">{relativeTime(e.created_at)}</span>
+                  <span className="shrink-0 whitespace-nowrap text-xs font-medium text-muted-foreground">{relativeTime(e.created_at)}</span>
                 </li>
               );
             })}

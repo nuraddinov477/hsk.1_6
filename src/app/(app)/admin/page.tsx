@@ -52,12 +52,12 @@ function relativeTime(iso: string | null) {
 
 function Kpi({ icon: Icon, label, value, accent }: { icon: typeof UsersIcon; label: string; value: number | string; accent?: string }) {
   return (
-    <div className="rounded-2xl border border-border bg-background p-4">
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-border bg-background p-4">
       <div className={`mb-2 inline-flex h-9 w-9 items-center justify-center rounded-lg ${accent ?? "bg-brand/10 text-brand"}`}>
         <Icon className="h-4 w-4" />
       </div>
-      <div className="text-2xl font-bold tabular-nums">{value}</div>
-      <div className="mt-0.5 text-sm font-medium text-muted-foreground">{label}</div>
+      <div className="truncate text-2xl font-bold tabular-nums" title={String(value)}>{value}</div>
+      <div className="mt-0.5 truncate text-sm font-medium text-muted-foreground">{label}</div>
     </div>
   );
 }
@@ -150,13 +150,13 @@ export default function AdminHome() {
               <Link
                 key={s.href}
                 href={s.href}
-                className="group flex items-center gap-3 rounded-2xl border border-border bg-background p-4 transition hover:border-brand/40 hover:shadow-sm"
+                className="group flex min-w-0 items-center gap-3 rounded-2xl border border-border bg-background p-4 transition hover:border-brand/40 hover:shadow-sm"
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
                   <Icon className="h-5 w-5" />
                 </span>
-                <span className="flex-1 text-base font-semibold">{s.label}</span>
-                <ArrowRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-brand" />
+                <span className="min-w-0 flex-1 truncate text-base font-semibold">{s.label}</span>
+                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-brand" />
               </Link>
             );
           })}
@@ -175,37 +175,39 @@ export default function AdminHome() {
             const info = counts?.[r.name];
             const recent = info?.spark.slice(-7).reduce((s, n) => s + n, 0) ?? 0;
             return (
-              <div key={r.name} className="group rounded-2xl border border-border bg-background p-5 transition hover:border-brand/40 hover:shadow-sm">
+              <div key={r.name} className="group overflow-hidden rounded-2xl border border-border bg-background p-5 transition hover:border-brand/40 hover:shadow-sm">
                 <div className="flex items-start justify-between gap-2">
-                  <Link href={`/admin/${r.name}`} className="flex items-center gap-2 text-base font-semibold hover:text-brand">
-                    <Icon className="h-5 w-5 text-muted-foreground" />
-                    {r.label}
+                  <Link href={`/admin/${r.name}`} className="flex min-w-0 items-center gap-2 text-base font-semibold hover:text-brand">
+                    <Icon className="h-5 w-5 shrink-0 text-muted-foreground" />
+                    <span className="truncate">{r.label}</span>
                   </Link>
                   <Link
                     href={`/admin/${r.name}/new`}
-                    className="inline-flex h-8 items-center gap-1 rounded-full bg-brand/10 px-3 text-sm font-medium text-brand hover:bg-brand/20"
+                    className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-brand/10 px-3 text-sm font-medium text-brand hover:bg-brand/20"
                   >
                     <Plus className="h-3.5 w-3.5" /> Yangi
                   </Link>
                 </div>
 
-                <div className="mt-3 flex items-end justify-between gap-2">
-                  <div>
+                <div className="mt-3 flex items-end justify-between gap-3">
+                  <div className="min-w-0 flex-1">
                     <div className="text-3xl font-bold tabular-nums">
                       {info ? info.count.toLocaleString() : <span className="text-muted-foreground">…</span>}
                     </div>
-                    <div className="mt-0.5 text-sm text-muted-foreground">
+                    <div className="mt-0.5 truncate text-sm text-muted-foreground">
                       yozuvlar · {recent > 0 ? <span className="font-medium text-green-600">+{recent} hafta</span> : "yangi yo'q"}
                     </div>
                   </div>
                   {info && info.spark.some((v) => v > 0) && (
-                    <Sparkline data={info.spark} width={96} height={32} />
+                    <div className="shrink-0">
+                      <Sparkline data={info.spark} width={88} height={32} />
+                    </div>
                   )}
                 </div>
 
-                <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2.5 text-sm">
-                  <span className="text-muted-foreground">oxirgi: {relativeTime(info?.lastAdded ?? null)}</span>
-                  <Link href={`/admin/${r.name}`} className="font-medium text-brand hover:underline">Boshqarish →</Link>
+                <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/60 pt-2.5 text-sm">
+                  <span className="truncate text-muted-foreground">oxirgi: {relativeTime(info?.lastAdded ?? null)}</span>
+                  <Link href={`/admin/${r.name}`} className="shrink-0 whitespace-nowrap font-medium text-brand hover:underline">Boshqarish →</Link>
                 </div>
               </div>
             );
@@ -228,11 +230,11 @@ export default function AdminHome() {
             <ul className="space-y-2.5 text-sm">
               {stats.recentEvents.slice(0, 8).map((e, i) => (
                 <li key={i} className="flex items-center justify-between gap-3 border-b border-border/40 pb-2 last:border-0">
-                  <span className="min-w-0 truncate">
-                    <b className="font-semibold">{e.email}</b>{" "}
-                    <span className="text-muted-foreground">{EVENT_LABELS[e.type] ?? e.type}</span>
-                  </span>
-                  <span className="shrink-0 text-xs font-medium text-muted-foreground">{relativeTime(e.createdAt)}</span>
+                  <div className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
+                    <b className="truncate font-semibold" title={e.email}>{e.email}</b>
+                    <span className="truncate text-xs text-muted-foreground sm:text-sm">{EVENT_LABELS[e.type] ?? e.type}</span>
+                  </div>
+                  <span className="shrink-0 whitespace-nowrap text-xs font-medium text-muted-foreground">{relativeTime(e.createdAt)}</span>
                 </li>
               ))}
             </ul>

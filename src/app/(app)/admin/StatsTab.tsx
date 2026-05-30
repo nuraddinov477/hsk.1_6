@@ -65,13 +65,13 @@ function Kpi({
   icon: Icon, label, value, accent, hint,
 }: { icon: typeof Users; label: string; value: number | string; accent?: string; hint?: string }) {
   return (
-    <div className="rounded-2xl border border-border bg-background p-4">
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-border bg-background p-4">
       <div className={`mb-2 inline-flex h-9 w-9 items-center justify-center rounded-lg ${accent ?? "bg-brand/10 text-brand"}`}>
         <Icon className="h-4 w-4" />
       </div>
-      <div className="text-2xl font-bold tabular-nums">{value}</div>
-      <div className="mt-0.5 text-sm font-medium text-muted-foreground">{label}</div>
-      {hint && <div className="mt-0.5 text-xs text-muted-foreground/80">{hint}</div>}
+      <div className="truncate text-2xl font-bold tabular-nums" title={String(value)}>{value}</div>
+      <div className="mt-0.5 truncate text-sm font-medium text-muted-foreground">{label}</div>
+      {hint && <div className="mt-0.5 truncate text-xs text-muted-foreground/80">{hint}</div>}
     </div>
   );
 }
@@ -315,11 +315,11 @@ export function StatsTab() {
           <ul className="max-h-72 space-y-2.5 overflow-y-auto pr-1 text-sm">
             {data.recentEvents.map((e, i) => (
               <li key={i} className="flex items-center justify-between gap-3 border-b border-border/40 pb-2 last:border-0">
-                <span className="min-w-0 truncate">
-                  <b className="font-semibold">{e.email}</b>{" "}
-                  <span className="text-muted-foreground">{EVENT_LABELS[e.type] ?? e.type}</span>
-                </span>
-                <span className="shrink-0 text-xs font-medium text-muted-foreground">{relativeTime(e.createdAt)}</span>
+                <div className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
+                  <b className="truncate font-semibold" title={e.email}>{e.email}</b>
+                  <span className="truncate text-xs text-muted-foreground sm:text-sm">{EVENT_LABELS[e.type] ?? e.type}</span>
+                </div>
+                <span className="shrink-0 whitespace-nowrap text-xs font-medium text-muted-foreground">{relativeTime(e.createdAt)}</span>
               </li>
             ))}
           </ul>
