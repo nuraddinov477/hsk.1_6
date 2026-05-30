@@ -98,6 +98,177 @@ export function AreaChart({
   );
 }
 
+// ── Daily chart — date-aware bars with rich tooltip, Y-axis grid, average line,
+// optional selected-day highlight + summary header (jami / o'rtacha / max / min).
+// Used by the Users analytics panel where each datum represents a calendar day.
+const UZ_MONTHS = ["yan", "fev", "mar", "apr", "may", "iyn", "iyl", "avg", "sen", "okt", "noy", "dek"];
+const UZ_WEEKDAYS = ["Yak", "Du", "Se", "Cho", "Pa", "Ju", "Sha"];
+
+function fmtUzDate(iso: string): string {
+  // "2026-05-30" → "30 may, sha"
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return `${d} ${UZ_MONTHS[m - 1]}, ${UZ_WEEKDAYS[dt.getUTCDay()]}`;
+}
+
+export function DailyChart({
+  data,
+  color = "#dc2626",
+  unit = "",
+  selected,
+  onSelect,
+  height = 200,
+  formatValue,
+}: {
+  data: { date: string; value: number }[];           // date = YYYY-MM-DD
+  color?: string;
+  unit?: string;                                     // e.g. "daq", "ta"
+  selected?: string | null;                          // YYYY-MM-DD to highlight
+  onSelect?: (date: string) => void;                 // called on bar click
+  height?: number;
+  formatValue?: (n: number) => string;
+}) {
+  const values = data.map((d) => d.value);
+  const max = Math.max(1, ...values);
+  const total = values.reduce((s, n) => s + n, 0);
+  const avg = data.length > 0 ? Math.round(total / data.length) : 0;
+  const maxIdx = values.indexOf(Math.max(...values));
+  const minIdx = values.indexOf(Math.min(...values));
+  const labelEvery = data.length > 60 ? 14 : data.length > 30 ? 7 : data.length > 14 ? 5 : data.length > 7 ? 3 : 1;
+  const fmt = formatValue ?? ((n: number) => `${n}${unit ? ` ${unit}` : ""}`);
+
+  // 4 horizontal gridlines.
+  const grid = [0, 0.25, 0.5, 0.75, 1].map((p) => ({
+    pct: 100 - p * 100,
+    label: Math.round(max * p),
+  }));
+
+  // Where the average sits as a % from top (0=top, 100=bottom).
+  const avgPctFromTop = max > 0 ? 100 - (avg / max) * 100 : 100;
+
+  return (
+    <div className="space-y-3">
+      {/* ── Summary row ───────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+        <SummaryStat label="Jami" value={fmt(total)} />
+        <SummaryStat label="O'rtacha / kun" value={fmt(avg)} />
+        <SummaryStat
+          label="Eng yuqori"
+          value={data[maxIdx] ? fmt(data[maxIdx].value) : "—"}
+          hint={data[maxIdx] ? fmtUzDate(data[maxIdx].date) : undefined}
+        />
+        <SummaryStat
+          label="Eng past"
+          value={data[minIdx] ? fmt(data[minIdx].value) : "—"}
+          hint={data[minIdx] ? fmtUzDate(data[minIdx].date) : undefined}
+        />
+      </div>
+
+      {/* ── Chart area ────────────────────────────────────────────────── */}
+      <div className="relative pl-9" style={{ height: height + 32 }}>
+        {/* Y-axis labels */}
+        <div className="absolute inset-y-0 left-0 w-9 pt-1 pb-7">
+          {grid.map((g, i) => (
+            <div
+              key={i}
+              className="absolute right-1 -translate-y-1/2 text-[11px] tabular-nums text-muted-foreground"
+              style={{ top: `${g.pct}%` }}
+            >
+              {g.label}
+            </div>
+          ))}
+        </div>
+
+        {/* Plot region */}
+        <div className="relative h-full pb-7 pt-1">
+          {/* Horizontal grid lines */}
+          {grid.map((g, i) => (
+            <div
+              key={i}
+              className="absolute inset-x-0 border-t border-border/50"
+              style={{ top: `${g.pct}%` }}
+            />
+          ))}
+
+          {/* Average dotted line */}
+          {avg > 0 && (
+            <div
+              className="pointer-events-none absolute inset-x-0 border-t-2 border-dashed border-brand/60"
+              style={{ top: `${avgPctFromTop}%` }}
+              title={`O'rtacha: ${fmt(avg)}`}
+            />
+          )}
+
+          {/* Bars */}
+          <div className="flex h-full items-end gap-[2px]">
+            {data.map((d, i) => {
+              const pct = max > 0 ? (d.value / max) * 100 : 0;
+              const isSelected = selected === d.date;
+              const isMax = i === maxIdx && d.value > 0;
+              const isMin = i === minIdx && d.value < (data[maxIdx]?.value ?? 0);
+              const barColor = isSelected ? "#16a34a" : color;
+              return (
+                <button
+                  key={d.date}
+                  type="button"
+                  onClick={() => onSelect?.(d.date)}
+                  className="group relative flex-1 cursor-pointer focus:outline-none"
+                  style={{ height: "100%" }}
+                  aria-label={`${fmtUzDate(d.date)}: ${fmt(d.value)}`}
+                >
+                  <div className="absolute inset-x-[1px] bottom-0 overflow-hidden rounded-t">
+                    <div
+                      className="w-full rounded-t opacity-80 transition group-hover:opacity-100"
+                      style={{
+                        height: `${Math.max(pct, d.value > 0 ? 2 : 0)}%`,
+                        background: barColor,
+                      }}
+                    />
+                  </div>
+                  {isSelected && (
+                    <div className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 rounded-sm bg-green-500" />
+                  )}
+                  {/* Hover tooltip */}
+                  <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-background px-3 py-2 text-xs shadow-lg group-hover:block">
+                    <div className="font-semibold">{fmtUzDate(d.date)}</div>
+                    <div className="mt-0.5 text-base font-bold tabular-nums" style={{ color: barColor }}>
+                      {fmt(d.value)}
+                    </div>
+                    {isMax && <div className="mt-0.5 text-[10px] font-semibold uppercase text-green-600">eng yuqori</div>}
+                    {isMin && <div className="mt-0.5 text-[10px] font-semibold uppercase text-red-600">eng past</div>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* X-axis date labels */}
+          <div className="absolute inset-x-0 bottom-0 flex gap-[2px] pt-1">
+            {data.map((d, i) => (
+              <span
+                key={d.date}
+                className="flex-1 text-center text-[11px] font-medium text-muted-foreground"
+              >
+                {i % labelEvery === 0 ? d.date.slice(5) : ""}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SummaryStat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-muted/30 px-3 py-2">
+      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="mt-0.5 text-base font-bold tabular-nums">{value}</div>
+      {hint && <div className="mt-0.5 truncate text-xs text-muted-foreground">{hint}</div>}
+    </div>
+  );
+}
+
 // ── Vertical bars (e.g. session count per hour 0..23) ─────────────────
 export function BarsChart({
   data,

@@ -1,18 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { UserPlus, Users as UsersIcon, Zap, Clock, TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { ChartCard, BarsChart } from "./charts";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { UserPlus, Users as UsersIcon, Zap, Clock, TrendingUp, TrendingDown, Minus, Calendar } from "lucide-react";
+import { ChartCard, DailyChart, PALETTE } from "./charts";
 
-// Users analytics — sits above the users list. Quick today/yesterday KPIs
-// with trend arrows + per-day signups / DAU / sessions / minutes for the last
-// 7 / 30 / 90 days. Pauses polling when the tab is hidden.
+// Users analytics — sits above the users list. Today/yesterday KPIs with trend
+// arrows + 4 daily charts (signups, DAU, sessions, minutes). The range is
+// either a quick preset (7/30/90) or a custom from/to picker; clicking a bar
+// highlights that day across all four charts.
 
 type Range = 7 | 30 | 90;
 
+type Series = { date: string; newUsers: number; activeUsers: number; sessions: number; minutes: number };
+
 type Activity = {
-  range: Range;
-  series: { date: string; newUsers: number; activeUsers: number; sessions: number; minutes: number }[];
+  from: string; to: string; days: number;
+  series: Series[];
   today: {
     signups: number; signupsTrend: number;
     activeUsers: number; activeTrend: number;
@@ -23,6 +26,13 @@ type Activity = {
     signups: number; activeUsers: number; sessions: number; minutes: number;
   };
 };
+
+function isoToday(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+function isoDaysAgo(n: number): string {
+  return new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
+}
 
 function fmtMinutes(m: number): string {
   if (!m) return "0 daq";
@@ -66,15 +76,25 @@ function Kpi({
 
 export function UsersAnalytics() {
   const [data, setData] = useState<Activity | null>(null);
-  const [range, setRange] = useState<Range>(30);
   const [loading, setLoading] = useState(true);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+
+  // Range state: either a preset or a custom from/to.
+  const [preset, setPreset] = useState<Range | "custom">(30);
+  const [from, setFrom] = useState<string>(isoDaysAgo(29));
+  const [to,   setTo]   = useState<string>(isoToday());
+
+  const queryString = useMemo(() => {
+    if (preset === "custom") return `from=${from}&to=${to}`;
+    return `range=${preset}`;
+  }, [preset, from, to]);
 
   const load = useCallback(async () => {
     if (document.hidden) return;
-    const r = await fetch(`/api/admin/users/activity?range=${range}`);
+    const r = await fetch(`/api/admin/users/activity?${queryString}`);
     if (r.ok) setData(await r.json());
     setLoading(false);
-  }, [range]);
+  }, [queryString]);
 
   useEffect(() => {
     void load();
@@ -84,34 +104,84 @@ export function UsersAnalytics() {
     return () => { clearInterval(t); document.removeEventListener("visibilitychange", onVis); };
   }, [load]);
 
+  function pickPreset(r: Range) {
+    setPreset(r);
+    setFrom(isoDaysAgo(r - 1));
+    setTo(isoToday());
+    setSelectedDay(null);
+  }
+
+  function applyCustomRange() {
+    setPreset("custom");
+    setSelectedDay(null);
+    // load fires via useEffect when queryString changes.
+  }
+
   if (loading || !data) return <p className="text-sm text-muted-foreground">Statistika yuklanmoqda…</p>;
 
   const t = data.today;
   const y = data.yesterday;
 
-  // Chart series — pick the date suffix (MM-DD) for the axis labels.
-  const labelEvery = data.series.length > 30 ? 7 : 5;
-  const newUserBars = data.series.map((s) => ({ label: s.date.slice(5), value: s.newUsers }));
-  const dauBars     = data.series.map((s) => ({ label: s.date.slice(5), value: s.activeUsers }));
-  const sessBars    = data.series.map((s) => ({ label: s.date.slice(5), value: s.sessions }));
-  const minsBars    = data.series.map((s) => ({ label: s.date.slice(5), value: s.minutes }));
+  // Pre-build the four series the charts need.
+  const series = {
+    newUsers:    data.series.map((s) => ({ date: s.date, value: s.newUsers })),
+    activeUsers: data.series.map((s) => ({ date: s.date, value: s.activeUsers })),
+    sessions:    data.series.map((s) => ({ date: s.date, value: s.sessions })),
+    minutes:     data.series.map((s) => ({ date: s.date, value: s.minutes })),
+  };
+
+  // Optional: read the row for the selected day for the "Tanlangan kun" hero panel.
+  const sel = selectedDay ? data.series.find((s) => s.date === selectedDay) : null;
 
   return (
     <div className="space-y-5">
-      {/* Range toggle */}
+      {/* Header + range controls */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-base font-bold tracking-tight">Foydalanuvchilar analitikasi</h2>
-        <div className="inline-flex h-9 rounded-full border border-border bg-background p-0.5 text-sm font-medium">
-          {([7, 30, 90] as Range[]).map((r) => (
+        <div>
+          <h2 className="text-base font-bold tracking-tight">Foydalanuvchilar analitikasi</h2>
+          <p className="text-xs text-muted-foreground">
+            <b className="text-foreground">{data.from}</b> — <b className="text-foreground">{data.to}</b> · {data.days} kun
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex h-9 rounded-full border border-border bg-background p-0.5 text-sm font-medium">
+            {([7, 30, 90] as Range[]).map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => pickPreset(r)}
+                className={`px-3.5 rounded-full transition ${preset === r ? "bg-brand text-brand-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                {r} kun
+              </button>
+            ))}
+          </div>
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background py-0.5 pl-3 pr-1 text-xs">
+            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              type="date"
+              value={from}
+              max={to}
+              onChange={(e) => setFrom(e.target.value)}
+              className="h-7 bg-transparent text-xs outline-none"
+            />
+            <span className="text-muted-foreground">—</span>
+            <input
+              type="date"
+              value={to}
+              min={from}
+              max={isoToday()}
+              onChange={(e) => setTo(e.target.value)}
+              className="h-7 bg-transparent text-xs outline-none"
+            />
             <button
-              key={r}
               type="button"
-              onClick={() => setRange(r)}
-              className={`px-3.5 rounded-full transition ${range === r ? "bg-brand text-brand-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              onClick={applyCustomRange}
+              className="ml-1 h-7 rounded-full bg-brand px-3 text-xs font-semibold text-brand-foreground hover:opacity-90"
             >
-              {r} kun
+              Ko‘rish
             </button>
-          ))}
+          </div>
         </div>
       </div>
 
@@ -135,24 +205,61 @@ export function UsersAnalytics() {
         />
       </div>
 
-      {/* Daily charts */}
+      {/* Selected-day hero panel (only when a bar was clicked) */}
+      {sel && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand/30 bg-brand/5 p-4">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-brand">Tanlangan kun</div>
+            <div className="mt-0.5 text-lg font-bold">{sel.date}</div>
+          </div>
+          <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-4">
+            <DayStat label="Yangi" value={sel.newUsers} />
+            <DayStat label="Faol" value={sel.activeUsers} />
+            <DayStat label="Sessiya" value={sel.sessions} />
+            <DayStat label="Vaqt" value={fmtMinutes(sel.minutes)} />
+          </div>
+          <button
+            type="button"
+            onClick={() => setSelectedDay(null)}
+            className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted"
+          >
+            Tozalash
+          </button>
+        </div>
+      )}
+
+      {/* Daily charts (click a bar to focus a day) */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard title="Yangi foydalanuvchilar" hint={`oxirgi ${range} kun`}>
-          <BarsChart data={newUserBars} labelEvery={labelEvery} />
+        <ChartCard title="Yangi foydalanuvchilar" hint="kuniga signup">
+          <DailyChart data={series.newUsers} color={PALETTE[6]} unit="ta"
+            selected={selectedDay} onSelect={setSelectedDay} />
         </ChartCard>
 
-        <ChartCard title="Faol foydalanuvchilar (DAU)" hint={`oxirgi ${range} kun`}>
-          <BarsChart data={dauBars} labelEvery={labelEvery} />
+        <ChartCard title="Faol foydalanuvchilar (DAU)" hint="unikal kunlik foydalanuvchi">
+          <DailyChart data={series.activeUsers} color={PALETTE[3]} unit="ta"
+            selected={selectedDay} onSelect={setSelectedDay} />
         </ChartCard>
 
-        <ChartCard title="Sessiyalar soni" hint={`oxirgi ${range} kun`}>
-          <BarsChart data={sessBars} labelEvery={labelEvery} />
+        <ChartCard title="Sessiyalar soni" hint="kuniga jami sessiya">
+          <DailyChart data={series.sessions} color={PALETTE[1]} unit="ta"
+            selected={selectedDay} onSelect={setSelectedDay} />
         </ChartCard>
 
-        <ChartCard title="Onlayn bo'lgan vaqt" hint={`oxirgi ${range} kun · daqiqa`}>
-          <BarsChart data={minsBars} labelEvery={labelEvery} />
+        <ChartCard title="Onlayn vaqt" hint="kuniga jami daqiqa">
+          <DailyChart data={series.minutes} color={PALETTE[5]} unit="daq"
+            selected={selectedDay} onSelect={setSelectedDay}
+            formatValue={(n) => fmtMinutes(n)} />
         </ChartCard>
       </div>
+    </div>
+  );
+}
+
+function DayStat({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div>
+      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="mt-0.5 truncate text-lg font-bold tabular-nums">{value}</div>
     </div>
   );
 }
