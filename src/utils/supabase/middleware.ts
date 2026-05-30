@@ -8,6 +8,21 @@ const PROTECTED_PREFIXES = ["/dashboard", "/learn", "/admin", "/profile"];
 // user in *before* they reach it, so it must stay reachable while authenticated.
 const AUTH_PAGES = ["/login", "/register", "/forgot-password"];
 
+// Maps a /learn/... prefix to the feature_flags key that gates it. When an
+// admin disables one of these for a specific user (via user_module_overrides),
+// the middleware bounces them to /dashboard instead of letting them load the
+// module directly via URL.
+const MODULE_GATES: Array<{ prefix: string; flag: string }> = [
+  { prefix: "/learn/characters",  flag: "module.characters" },
+  { prefix: "/learn/vocabulary",  flag: "module.vocabulary" },
+  { prefix: "/learn/listening",   flag: "module.listening"  },
+  { prefix: "/learn/reading",     flag: "module.reading"    },
+  { prefix: "/learn/writing",     flag: "module.writing"    },
+  { prefix: "/learn/speaking",    flag: "module.speaking"   },
+  { prefix: "/learn/exam",        flag: "module.exam"       },
+  { prefix: "/learn/leaderboard", flag: "feature.leaderboard" },
+];
+
 function startsWithAny(pathname: string, prefixes: string[]) {
   return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
@@ -66,6 +81,26 @@ export async function updateSession(request: NextRequest) {
     url.pathname = "/dashboard";
     url.search = "";
     return redirectKeepingCookies(url, supabaseResponse);
+  }
+
+  // Per-user module gate: if the user has an override disabling the module
+  // they're trying to open directly via URL, bounce them to /dashboard.
+  if (user) {
+    const gate = MODULE_GATES.find((g) => pathname === g.prefix || pathname.startsWith(`${g.prefix}/`));
+    if (gate) {
+      const { data: override } = await supabase
+        .from("user_module_overrides")
+        .select("enabled")
+        .eq("user_id", user.id)
+        .eq("flag_key", gate.flag)
+        .maybeSingle();
+      if (override && override.enabled === false) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/dashboard";
+        url.search = "blocked=1";
+        return redirectKeepingCookies(url, supabaseResponse);
+      }
+    }
   }
 
   return supabaseResponse;
