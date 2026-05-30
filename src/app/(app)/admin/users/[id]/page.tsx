@@ -23,6 +23,15 @@ type UserDetail = {
   profile: Record<string, unknown> | null;
   progress: Record<string, unknown> | null;
   dailyActivity: { date: string; sessions: number; minutes: number }[];
+  sessionsLog: {
+    id: string;
+    started_at: string;
+    ended_at: string | null;
+    last_seen_at: string;
+    duration_min: number;
+    device: string | null;
+    live: boolean;
+  }[];
   events: { event_type: string; payload: unknown; created_at: string }[];
   exams:  { id: string; level: number; score: number; created_at: string }[];
 };
@@ -220,6 +229,48 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
           />
         </ChartCard>
       </div>
+
+      {/* ── Sessions log: when in, when out, how long ────────────────── */}
+      <ChartCard title="Sessiyalar (oxirgi 30 ta)" hint="qachon kirgan · qachon chiqgan · qancha vaqt">
+        {data.sessionsLog.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Hali sessiya yo&apos;q.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-border text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2.5 text-left">Kirgan vaqti</th>
+                  <th className="px-3 py-2.5 text-left">Oxirgi faollik</th>
+                  <th className="px-3 py-2.5 text-left">Chiqgan vaqti</th>
+                  <th className="px-3 py-2.5 text-right">Davomiyligi</th>
+                  <th className="px-3 py-2.5 text-left">Holat</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {data.sessionsLog.map((s) => (
+                  <tr key={s.id}>
+                    <td className="px-3 py-2.5 whitespace-nowrap font-medium">{fmtDate(s.started_at)}</td>
+                    <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">{fmtDate(s.last_seen_at)}</td>
+                    <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">{s.ended_at ? fmtDate(s.ended_at) : "—"}</td>
+                    <td className="px-3 py-2.5 whitespace-nowrap text-right font-medium tabular-nums">{fmtMinutes(s.duration_min)}</td>
+                    <td className="px-3 py-2.5">
+                      {s.live ? (
+                        <span className="inline-flex items-center gap-1 rounded bg-green-500/15 px-2 py-0.5 text-xs font-semibold text-green-600">
+                          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" /> Onlayn
+                        </span>
+                      ) : s.ended_at ? (
+                        <span className="rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Tugatgan</span>
+                      ) : (
+                        <span className="rounded bg-orange-500/10 px-2 py-0.5 text-xs font-medium text-orange-600">Uzilgan</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </ChartCard>
 
       {/* ── Per-user feature gate ────────────────────────────────────── */}
       <ChartCard title="Modul va funksiyalarga ruxsat" hint="shu foydalanuvchi uchun">

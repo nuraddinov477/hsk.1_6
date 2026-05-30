@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ShieldCheck, ShieldOff, Lock, LockOpen, Eye } from "lucide-react";
+import { UsersAnalytics } from "./UsersAnalytics";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -21,6 +22,11 @@ function relativeTime(iso: string | null) {
   if (diff < 86_400_000)  return `${Math.floor(diff / 3_600_000)} soat oldin`;
   if (diff < 30 * 86_400_000) return `${Math.floor(diff / 86_400_000)} kun oldin`;
   return new Date(iso).toLocaleDateString();
+}
+
+function fmtJoinedDate(iso: string | null) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("uz-UZ", { year: "numeric", month: "short", day: "numeric" });
 }
 
 export function UsersTab() {
@@ -72,15 +78,20 @@ export function UsersTab() {
   const filtered = q ? users.filter((u) => (u.email as string).toLowerCase().includes(q)) : users;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+    <div className="space-y-6">
+      <UsersAnalytics />
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5">
+        <div>
+          <h2 className="text-base font-bold tracking-tight">Foydalanuvchilar ro&apos;yxati</h2>
+          <p className="text-sm text-muted-foreground">{filtered.length} ta foydalanuvchi · oxirgi faollik bo&apos;yicha tartiblangan</p>
+        </div>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Email bo'yicha qidirish…"
           className="h-10 w-full max-w-sm rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-brand"
         />
-        <span className="shrink-0 text-xs text-muted-foreground">{filtered.length} ta foydalanuvchi</span>
       </div>
 
       {loading ? (
@@ -91,6 +102,7 @@ export function UsersTab() {
             <thead className="bg-muted/50 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-3 py-3 text-left">Email</th>
+                <th className="px-3 py-3 text-left">Birinchi kirgan</th>
                 <th className="px-3 py-3 text-right">XP</th>
                 <th className="px-3 py-3 text-right">Streak</th>
                 <th className="px-3 py-3 text-right">Vaqt</th>
@@ -118,6 +130,7 @@ export function UsersTab() {
                       <div className="mt-1 text-xs text-red-600">Sabab: <b>{u.blocked_reason}</b></div>
                     )}
                   </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap text-sm text-muted-foreground">{fmtJoinedDate(u.registered_at)}</td>
                   <td className="px-3 py-2.5 text-right font-medium tabular-nums">{u.xp}</td>
                   <td className="px-3 py-2.5 text-right font-medium tabular-nums">{u.streak}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">{fmtMinutes(u.minutes_total ?? 0)}</td>
@@ -155,7 +168,7 @@ export function UsersTab() {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={9} className="px-3 py-6 text-center text-muted-foreground">Foydalanuvchilar topilmadi.</td></tr>
+                <tr><td colSpan={10} className="px-3 py-6 text-center text-muted-foreground">Foydalanuvchilar topilmadi.</td></tr>
               )}
             </tbody>
           </table>
