@@ -157,21 +157,25 @@ export default function StartWizardPage() {
         }
       }
       await persistPlan();
-      router.replace("/profile");
+      // Hard navigation so we beat any in-flight client effects that might try
+      // to redirect us elsewhere (e.g. the "already onboarded → /dashboard" bounce).
+      window.location.assign("/profile");
     } catch (err) {
       setAuthError(err instanceof AuthError ? t.auth.errors[err.code] : t.auth.errors.generic);
-    } finally {
       setSubmitting(false);
     }
   }
 
   // If they hit /start while already onboarded, send them straight to the app.
+  // Runs once on mount only — we don't want this firing after the user just
+  // registered inside the wizard, since finish() owns the post-save navigation.
   useEffect(() => {
-    if (!isLoggedIn) return;
+    if (!isLoggedIn || submitting) return;
     fetch("/api/onboarding").then((r) => r.json()).then((j: { done?: boolean }) => {
       if (j.done) router.replace("/dashboard");
     }).catch(() => {});
-  }, [isLoggedIn, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="flex min-h-screen flex-1 items-start justify-center bg-muted/30 px-4 py-8 sm:py-12">
