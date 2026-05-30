@@ -7,6 +7,7 @@ import {
   Home, BarChart3, Users as UsersIcon, ToggleLeft, Upload, History, ShieldAlert, ChevronRight,
 } from "lucide-react";
 import { RESOURCES } from "./resources";
+import { AdminSearch } from "./AdminSearch";
 
 // Django-style admin chrome. Left sidebar groups: System (stats/flags/import/
 // logs), Users, Content (one entry per Resource). The "Home" link returns to
@@ -51,24 +52,31 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ];
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
-      {/* Admin sidebar */}
-      <aside className="lg:sticky lg:top-20 lg:self-start">
-        <div className="space-y-5">
-          <NavGroup title="Tizim" items={SYSTEM} pathname={pathname ?? ""} />
-          <NavGroup title="Hisoblar" items={USERS} pathname={pathname ?? ""} />
-          <NavGroup
-            title="Kontent"
-            items={RESOURCES.map((r) => ({
-              href: `/admin/${r.name}`, label: r.label, icon: r.icon,
-            }))}
-            pathname={pathname ?? ""}
-          />
-        </div>
-      </aside>
+    <div className="space-y-5">
+      {/* Admin command bar */}
+      <div className="flex items-center justify-between gap-3">
+        <AdminSearch />
+      </div>
 
-      {/* Main */}
-      <div className="min-w-0">{children}</div>
+      <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
+        {/* Admin sidebar */}
+        <aside className="lg:sticky lg:top-20 lg:self-start">
+          <div className="space-y-5">
+            <NavGroup title="Tizim" items={SYSTEM} pathname={pathname ?? ""} />
+            <NavGroup title="Hisoblar" items={USERS} pathname={pathname ?? ""} />
+            <NavGroup
+              title="Kontent"
+              items={RESOURCES.map((r) => ({
+                href: `/admin/${r.name}`, label: r.label, icon: r.icon,
+              }))}
+              pathname={pathname ?? ""}
+            />
+          </div>
+        </aside>
+
+        {/* Main */}
+        <div className="min-w-0">{children}</div>
+      </div>
     </div>
   );
 }

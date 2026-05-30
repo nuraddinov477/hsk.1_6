@@ -241,6 +241,69 @@ export function DonutChart({
   );
 }
 
+// ── Inline sparkline: tiny SVG trendline for KPI cards ───────────────
+export function Sparkline({
+  data,
+  color = "#dc2626",
+  width = 80,
+  height = 24,
+  showArea = true,
+}: {
+  data: number[];
+  color?: string;
+  width?: number;
+  height?: number;
+  showArea?: boolean;
+}) {
+  if (data.length === 0) return null;
+  const max = Math.max(1, ...data);
+  const step = data.length > 1 ? width / (data.length - 1) : width;
+  const points = data.map((v, i) => `${i * step},${height - (v / max) * (height - 2) - 1}`);
+  const path = `M ${points.join(" L ")}`;
+  const area = `M 0,${height} L ${points.join(" L ")} L ${width},${height} Z`;
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+      {showArea && <path d={area} fill={color} fillOpacity="0.15" />}
+      <path d={path} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// ── Funnel chart: stacked horizontal bars showing drop-off ───────────
+export function Funnel({
+  steps,
+}: {
+  steps: { label: string; value: number }[];
+}) {
+  const max = Math.max(1, ...steps.map((s) => s.value));
+  return (
+    <ul className="space-y-2">
+      {steps.map((s, i) => {
+        const w = (s.value / max) * 100;
+        const prev = i === 0 ? s.value : steps[i - 1].value;
+        const dropPct = prev === 0 ? 0 : Math.round(((prev - s.value) / prev) * 100);
+        const color = PALETTE[i % PALETTE.length];
+        return (
+          <li key={i}>
+            <div className="mb-1 flex items-baseline justify-between gap-2 text-xs">
+              <span className="font-medium">
+                <span className="text-[10px] text-muted-foreground">{i + 1}.</span> {s.label}
+              </span>
+              <span className="shrink-0 tabular-nums">
+                <b>{s.value}</b>
+                {i > 0 && <span className={`ml-1 text-[10px] ${dropPct > 0 ? "text-red-500" : "text-muted-foreground"}`}>−{dropPct}%</span>}
+              </span>
+            </div>
+            <div className="h-3 overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full transition-all" style={{ width: `${w}%`, background: color }} />
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 // ── Stacked bar (e.g. vocab + characters per HSK level) ───────────────
 export function StackedBars({
   data,

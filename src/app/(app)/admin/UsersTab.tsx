@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { ShieldCheck, ShieldOff, Lock, LockOpen } from "lucide-react";
+import { ShieldCheck, ShieldOff, Lock, LockOpen, Eye } from "lucide-react";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -126,6 +127,13 @@ export function UsersTab() {
                   <td className="px-3 py-2 text-muted-foreground">{relativeTime(u.last_seen_at)}</td>
                   <td className="px-3 py-2">
                     <div className="flex justify-end gap-1">
+                      <Link
+                        href={`/admin/users/${u.user_id}`}
+                        title="Batafsil"
+                        className="rounded-lg p-1.5 text-muted-foreground hover:bg-brand/10 hover:text-brand"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Link>
                       <button
                         onClick={() => toggleRole(u)}
                         title={u.role === "admin" ? "Adminlikdan olib tashlash" : "Admin qilish"}

@@ -6,10 +6,13 @@ import {
   Flame, BookOpen, Languages, FileText,
 } from "lucide-react";
 import {
-  ChartCard, AreaChart, BarsChart, HBarsChart, DonutChart, StackedBars, PALETTE,
+  ChartCard, AreaChart, BarsChart, HBarsChart, DonutChart, StackedBars, Funnel, PALETTE,
 } from "./charts";
 
+type Range = 7 | 30 | 90;
+
 type Stats = {
+  range: Range;
   totals: {
     users: number; blockedUsers: number; adminUsers: number;
     sessionsToday: number; activeNow: number; examsTaken: number;
@@ -23,6 +26,9 @@ type Stats = {
   targetLevelDist: { level: number; count: number }[];
   goalDist: { goal: string; count: number }[];
   contentByLevel: { level: number; vocab: number; characters: number }[];
+  funnel: { label: string; value: number }[];
+  retention: { label: string; value: number }[];
+  examPassRate: { level: number; total: number; passed: number; rate: number }[];
   recentEvents: { type: string; payload: unknown; createdAt: string; email: string }[];
   topUsers: { email: string; xp: number; streak: number; vocab_learned: number; characters_learned: number }[];
 };
@@ -73,11 +79,12 @@ function Kpi({
 export function StatsTab() {
   const [data, setData] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [range, setRange] = useState<Range>(30);
 
   useEffect(() => {
     let alive = true;
     async function load() {
-      const r = await fetch("/api/admin/stats");
+      const r = await fetch(`/api/admin/stats?range=${range}`);
       if (!alive) return;
       if (r.ok) setData(await r.json());
       setLoading(false);
@@ -85,7 +92,7 @@ export function StatsTab() {
     void load();
     const t = setInterval(load, 30_000);
     return () => { alive = false; clearInterval(t); };
-  }, []);
+  }, [range]);
 
   if (loading) return <p className="text-sm text-muted-foreground">Yuklanmoqda…</p>;
   if (!data)   return <p className="text-sm text-red-600">Statistika yuklanmadi.</p>;
@@ -129,6 +136,24 @@ export function StatsTab() {
 
   return (
     <div className="space-y-6">
+      {/* ── Time-range selector ─────────────────────────────────────── */}
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground">
+          Davr: <b>{range} kun</b> · har 30 soniyada yangilanadi
+        </p>
+        <div className="inline-flex h-9 rounded-full border border-border bg-background p-0.5 text-xs">
+          {([7, 30, 90] as Range[]).map((r) => (
+            <button
+              key={r}
+              onClick={() => setRange(r)}
+              className={`px-3 rounded-full transition ${range === r ? "bg-brand text-brand-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {r} kun
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* ── KPI grid ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <Kpi icon={Users}         label="Foydalanuvchilar" value={totals.users} hint={`${totals.adminUsers} admin`} />
@@ -189,6 +214,60 @@ export function StatsTab() {
             <p className="text-sm text-muted-foreground">Ma&apos;lumot yo&apos;q.</p>
           ) : (
             <DonutChart data={goalSeries} />
+          )}
+        </ChartCard>
+      </div>
+
+      {/* ── Funnel + retention + exam pass rate ─────────────────────── */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <ChartCard title="Foydalanuvchi yo'li (funnel)" hint="ro'yxat → onboarding → o'rganish → imtihon">
+          <Funnel steps={data.funnel} />
+        </ChartCard>
+
+        <ChartCard title="Qaytib kelish (retention)" hint="ro'yxatdan o'tgan kundan keyin">
+          <ul className="space-y-3">
+            {data.retention.map((r) => (
+              <li key={r.label}>
+                <div className="mb-1 flex items-baseline justify-between text-xs">
+                  <span className="font-medium">{r.label}</span>
+                  <span className="tabular-nums"><b>{r.value}%</b></span>
+                </div>
+                <div className="h-3 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-green-500 transition-all"
+                    style={{ width: `${r.value}%` }}
+                  />
+                </div>
+              </li>
+            ))}
+            <li className="pt-1 text-[11px] text-muted-foreground">
+              D1 — ro&apos;yxatdan keyin 1+ kundan keyin qaytdi
+            </li>
+          </ul>
+        </ChartCard>
+
+        <ChartCard title="Imtihon o'tish darajasi" hint="HSK bo'yicha">
+          {data.examPassRate.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Hali imtihon topshirilmagan.</p>
+          ) : (
+            <ul className="space-y-3">
+              {data.examPassRate.map((e) => (
+                <li key={e.level}>
+                  <div className="mb-1 flex items-baseline justify-between text-xs">
+                    <span className="font-medium">HSK {e.level}</span>
+                    <span className="tabular-nums text-muted-foreground">
+                      <b className="text-foreground">{e.rate}%</b> · {e.passed}/{e.total}
+                    </span>
+                  </div>
+                  <div className="h-3 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${e.rate}%`, background: e.rate >= 60 ? "#16a34a" : e.rate >= 30 ? "#eab308" : "#dc2626" }}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
           )}
         </ChartCard>
       </div>

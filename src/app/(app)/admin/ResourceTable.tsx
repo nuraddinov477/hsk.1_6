@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Search, Plus, Trash2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowDown, ArrowUp, X } from "lucide-react";
+import { Search, Plus, Trash2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowDown, ArrowUp, X, Download } from "lucide-react";
 import type { Resource } from "./resources";
 
 // Generic resource list view — search box, HSK-level filter, sortable column
@@ -131,6 +131,18 @@ export function ResourceTable({ resource }: { resource: Resource }) {
             {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>HSK {n}</option>)}
           </select>
         )}
+
+        <a
+          href={`/api/admin/resource/export?${new URLSearchParams({
+            type: resource.name,
+            ...(q ? { q } : {}),
+            ...(level ? { level: String(level) } : {}),
+          })}`}
+          className="inline-flex h-10 items-center gap-1.5 rounded-full border border-border bg-background px-4 text-sm font-medium hover:border-brand/40 hover:text-brand"
+          title="Joriy filtr bilan CSV yuklash"
+        >
+          <Download className="h-4 w-4" /> CSV
+        </a>
 
         <Link
           href={`/admin/${resource.name}/new`}

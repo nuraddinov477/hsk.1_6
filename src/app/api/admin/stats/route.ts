@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { EXAM_SPECS } from "@/lib/exam-data";
 
 // Aggregated stats for the admin dashboard. Multiple chart-ready series are
 // computed here so the client only renders SVG — no recompute on the browser.
-export async function GET() {
+// Honors a `range=7|30|90` query param for time-windowed series; the default
+// is 30 days.
+export async function GET(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -11,10 +14,14 @@ export async function GET() {
   const { data: me } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
   if (me?.role !== "admin") return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
+  const url = new URL(request.url);
+  const rangeRaw = Number(url.searchParams.get("range") ?? "30");
+  const range = [7, 30, 90].includes(rangeRaw) ? rangeRaw : 30;
+
   const now = new Date();
   const today      = new Date(now); today.setUTCHours(0, 0, 0, 0);
   const fiveMinAgo = new Date(now.getTime() - 5 * 60_000);
-  const monthAgo   = new Date(now.getTime() - 30 * 86_400_000);
+  const rangeAgo   = new Date(now.getTime() - range * 86_400_000);
 
   const [
     totalUsers,
@@ -32,6 +39,8 @@ export async function GET() {
     vocabRows,
     charRows,
     progressTotals,
+    examRows,
+    cohortUsers,
   ] = await Promise.all([
     supabase.from("profiles").select("id", { count: "exact", head: true }),
     supabase.from("profiles").select("id", { count: "exact", head: true }).eq("blocked", true),
@@ -47,15 +56,17 @@ export async function GET() {
     ]),
     supabase.from("user_events").select("event_type, payload, created_at, user_id").order("created_at", { ascending: false }).limit(50),
     supabase.from("admin_user_overview").select("email, xp, streak, vocab_learned, characters_learned").order("xp", { ascending: false }).limit(8),
-    supabase.from("user_sessions").select("started_at, user_id").gte("started_at", monthAgo.toISOString()),
-    supabase.from("user_events").select("event_type, created_at").gte("created_at", monthAgo.toISOString()),
-    supabase.from("profiles").select("current_level, target_level, goal"),
+    supabase.from("user_sessions").select("started_at, user_id").gte("started_at", rangeAgo.toISOString()),
+    supabase.from("user_events").select("event_type, created_at").gte("created_at", rangeAgo.toISOString()),
+    supabase.from("profiles").select("current_level, target_level, goal, onboarded_at"),
     supabase.from("vocabulary").select("hsk_level"),
     supabase.from("characters").select("hsk_level"),
     supabase.from("user_progress").select("xp, streak, vocab_learned, characters_learned"),
+    supabase.from("exam_results").select("level, score"),
+    supabase.from("admin_user_overview").select("user_id, registered_at, last_seen_at, xp, exams_taken"),
   ]);
 
-  // ── DAU per day for the last 30 days ──────────────────────────────────
+  // ── DAU per day for the requested range ───────────────────────────────
   const dau: Record<string, Set<string>> = {};
   const sessionsByDay: Record<string, number> = {};
   const sessionsByHour = Array.from({ length: 24 }, () => 0);
@@ -68,12 +79,12 @@ export async function GET() {
     sessionsByHour[hour] += 1;
   }
   const dauSeries: { date: string; users: number; sessions: number }[] = [];
-  for (let i = 29; i >= 0; i--) {
+  for (let i = range - 1; i >= 0; i--) {
     const d = new Date(now.getTime() - i * 86_400_000).toISOString().slice(0, 10);
     dauSeries.push({ date: d, users: dau[d]?.size ?? 0, sessions: sessionsByDay[d] ?? 0 });
   }
 
-  // ── Event breakdown (last 30d) ────────────────────────────────────────
+  // ── Event breakdown ──────────────────────────────────────────────────
   const eventByType: Record<string, number> = {};
   for (const r of eventTypes.data ?? []) {
     const t = r.event_type as string;
@@ -84,10 +95,13 @@ export async function GET() {
     .sort((a, b) => b.count - a.count);
 
   // ── Profile distributions ─────────────────────────────────────────────
-  type ProfRow = { current_level: number | null; target_level: number | null; goal: string | null };
+  type ProfRow = {
+    current_level: number | null; target_level: number | null;
+    goal: string | null; onboarded_at: string | null;
+  };
   const profs = (profiles.data ?? []) as ProfRow[];
   const levelBuckets = (key: "current_level" | "target_level") => {
-    const out = Array.from({ length: 7 }, (_, i) => ({ level: i, count: 0 })); // 0..6
+    const out = Array.from({ length: 7 }, (_, i) => ({ level: i, count: 0 }));
     for (const p of profs) {
       const v = p[key];
       if (v != null && v >= 0 && v <= 6) out[v].count += 1;
@@ -124,6 +138,57 @@ export async function GET() {
     totalStreak += (r.streak as number) ?? 0;
   }
 
+  // ── Funnel: signups → onboarded → started learning → took exam ──────
+  type Cohort = { user_id: string; registered_at: string | null; last_seen_at: string | null; xp: number; exams_taken: number };
+  const cohort = (cohortUsers.data ?? []) as Cohort[];
+  const onboardedCount = profs.filter((p) => p.onboarded_at != null).length;
+  const startedCount   = cohort.filter((c) => c.xp > 0).length;
+  const examedCount    = cohort.filter((c) => c.exams_taken > 0).length;
+  const funnel = [
+    { label: "Ro'yxatdan o'tdi",  value: cohort.length },
+    { label: "Onboarding tugatdi", value: onboardedCount },
+    { label: "O'rgana boshladi",   value: startedCount },
+    { label: "Imtihon topshirdi",  value: examedCount },
+  ];
+
+  // ── Retention: % of cohort that came back N+ days after signup ──────
+  // "Came back" = last_seen_at >= registered_at + N*86_400_000.
+  function retention(days: number) {
+    if (cohort.length === 0) return 0;
+    let hits = 0;
+    for (const c of cohort) {
+      if (!c.registered_at || !c.last_seen_at) continue;
+      const reg = new Date(c.registered_at).getTime();
+      const last = new Date(c.last_seen_at).getTime();
+      if (last - reg >= days * 86_400_000) hits += 1;
+    }
+    return Math.round((hits / cohort.length) * 100);
+  }
+  const retentionSeries = [
+    { label: "D1",  value: retention(1) },
+    { label: "D7",  value: retention(7) },
+    { label: "D30", value: retention(30) },
+  ];
+
+  // ── Exam pass rate per HSK level ─────────────────────────────────────
+  const passByLevel: Record<number, { total: number; passed: number }> = {};
+  for (const r of examRows.data ?? []) {
+    const lv = (r.level as number) ?? 0;
+    if (!lv) continue;
+    const spec = EXAM_SPECS[lv];
+    if (!spec) continue;
+    (passByLevel[lv] ??= { total: 0, passed: 0 }).total += 1;
+    if ((r.score as number) >= spec.passPoints) passByLevel[lv].passed += 1;
+  }
+  const examPassRate = Object.entries(passByLevel)
+    .map(([lv, v]) => ({
+      level: Number(lv),
+      total: v.total,
+      passed: v.passed,
+      rate: v.total > 0 ? Math.round((v.passed / v.total) * 100) : 0,
+    }))
+    .sort((a, b) => a.level - b.level);
+
   // Look up emails for the recent-event author column.
   const eventUserIds = Array.from(new Set((recentEvents.data ?? []).map((e) => e.user_id as string)));
   let emailById: Record<string, string> = {};
@@ -136,6 +201,7 @@ export async function GET() {
   }
 
   return NextResponse.json({
+    range,
     totals: {
       users:         totalUsers.count ?? 0,
       blockedUsers:  blockedUsers.count ?? 0,
@@ -159,6 +225,9 @@ export async function GET() {
     targetLevelDist,
     goalDist,
     contentByLevel,
+    funnel,
+    retention: retentionSeries,
+    examPassRate,
     recentEvents: (recentEvents.data ?? []).map((e) => ({
       type:      e.event_type,
       payload:   e.payload,
