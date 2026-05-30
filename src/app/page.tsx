@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/utils/supabase/server";
 import { Navbar } from "@/components/marketing/Navbar";
 import { Footer } from "@/components/marketing/Footer";
 import { Hero } from "@/components/marketing/Hero";
@@ -11,14 +9,11 @@ import { Pricing } from "@/components/marketing/Pricing";
 import { Faq } from "@/components/marketing/Faq";
 import { CTA } from "@/components/marketing/CTA";
 
-// Site entry point. Anonymous visitors see the marketing landing here; signed-in
-// users are forwarded to their learning hub. /login is reached via the navbar
-// "Kirish" button or the inline "Ro'yxatdan o'ting" / "Boshlash" CTAs.
-export default async function Home() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) redirect("/dashboard");
-
+// Site entry. Whoever lands here — anonymous or signed-in — sees the marketing
+// landing. From here, "Kirish" takes them to /login (already-signed-in users
+// are bounced straight to /dashboard by the middleware) and "Boshlash" /
+// "Ro'yxatdan o'ting" takes them into the onboarding wizard.
+export default function Home() {
   return (
     <>
       <Navbar />
