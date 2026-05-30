@@ -53,11 +53,11 @@ function relativeTime(iso: string | null) {
 function Kpi({ icon: Icon, label, value, accent }: { icon: typeof UsersIcon; label: string; value: number | string; accent?: string }) {
   return (
     <div className="rounded-2xl border border-border bg-background p-4">
-      <div className={`mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg ${accent ?? "bg-brand/10 text-brand"}`}>
+      <div className={`mb-2 inline-flex h-9 w-9 items-center justify-center rounded-lg ${accent ?? "bg-brand/10 text-brand"}`}>
         <Icon className="h-4 w-4" />
       </div>
-      <div className="text-xl font-bold tabular-nums">{value}</div>
-      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-2xl font-bold tabular-nums">{value}</div>
+      <div className="mt-0.5 text-sm font-medium text-muted-foreground">{label}</div>
     </div>
   );
 }
@@ -68,18 +68,27 @@ export default function AdminHome() {
 
   useEffect(() => {
     let alive = true;
+    let lastStats = 0;
     async function load() {
-      const [c, s] = await Promise.all([
-        fetch("/api/admin/counts").then((r) => r.ok ? r.json() : null).catch(() => null),
-        fetch("/api/admin/stats").then((r) => r.ok ? r.json() : null).catch(() => null),
-      ]);
-      if (!alive) return;
-      if (c) setCounts(c);
-      if (s) setStats(s);
+      if (document.hidden) return;          // pause polling when tab is hidden
+      const wantStats = Date.now() - lastStats > 55_000; // stats is heavy: every ~60s
+      const jobs: Promise<unknown>[] = [
+        fetch("/api/admin/counts").then((r) => r.ok ? r.json() : null).catch(() => null).then((c) => { if (alive && c) setCounts(c); }),
+      ];
+      if (wantStats) {
+        lastStats = Date.now();
+        jobs.push(
+          fetch("/api/admin/stats?range=30").then((r) => r.ok ? r.json() : null).catch(() => null)
+            .then((s) => { if (alive && s) setStats(s); }),
+        );
+      }
+      await Promise.all(jobs);
     }
     void load();
     const t = setInterval(load, 30_000);
-    return () => { alive = false; clearInterval(t); };
+    const onVis = () => { if (!document.hidden) void load(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { alive = false; clearInterval(t); document.removeEventListener("visibilitychange", onVis); };
   }, []);
 
   const totals = stats?.totals;
@@ -96,9 +105,9 @@ export default function AdminHome() {
           </p>
         </div>
         {stats && (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-sm font-medium text-muted-foreground">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
-            jonli · 30 s&apos;da yangilanadi
+            jonli · 60 s&apos;da yangilanadi
           </span>
         )}
       </header>
@@ -133,7 +142,7 @@ export default function AdminHome() {
 
       {/* ── System shortcuts ─────────────────────────────────────────── */}
       <section>
-        <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Tizim</h2>
+        <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">Tizim</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {SYSTEM_LINKS.map((s) => {
             const Icon = s.icon;
@@ -144,10 +153,10 @@ export default function AdminHome() {
                 className="group flex items-center gap-3 rounded-2xl border border-border bg-background p-4 transition hover:border-brand/40 hover:shadow-sm"
               >
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-5 w-5" />
                 </span>
-                <span className="flex-1 text-sm font-medium">{s.label}</span>
-                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-brand" />
+                <span className="flex-1 text-base font-semibold">{s.label}</span>
+                <ArrowRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-brand" />
               </Link>
             );
           })}
@@ -157,8 +166,8 @@ export default function AdminHome() {
       {/* ── Resource cards with sparkline ────────────────────────────── */}
       <section>
         <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Kontent modellari</h2>
-          <span className="text-[10px] text-muted-foreground">14 kunlik o&apos;sish</span>
+          <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Kontent modellari</h2>
+          <span className="text-xs text-muted-foreground">14 kunlik o&apos;sish</span>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {RESOURCES.map((r) => {
@@ -166,37 +175,37 @@ export default function AdminHome() {
             const info = counts?.[r.name];
             const recent = info?.spark.slice(-7).reduce((s, n) => s + n, 0) ?? 0;
             return (
-              <div key={r.name} className="group rounded-2xl border border-border bg-background p-4 transition hover:border-brand/40 hover:shadow-sm">
+              <div key={r.name} className="group rounded-2xl border border-border bg-background p-5 transition hover:border-brand/40 hover:shadow-sm">
                 <div className="flex items-start justify-between gap-2">
-                  <Link href={`/admin/${r.name}`} className="flex items-center gap-2 font-medium hover:text-brand">
-                    <Icon className="h-4 w-4 text-muted-foreground" />
+                  <Link href={`/admin/${r.name}`} className="flex items-center gap-2 text-base font-semibold hover:text-brand">
+                    <Icon className="h-5 w-5 text-muted-foreground" />
                     {r.label}
                   </Link>
                   <Link
                     href={`/admin/${r.name}/new`}
-                    className="inline-flex h-7 items-center gap-1 rounded-full bg-brand/10 px-2.5 text-xs font-medium text-brand hover:bg-brand/20"
+                    className="inline-flex h-8 items-center gap-1 rounded-full bg-brand/10 px-3 text-sm font-medium text-brand hover:bg-brand/20"
                   >
-                    <Plus className="h-3 w-3" /> Yangi
+                    <Plus className="h-3.5 w-3.5" /> Yangi
                   </Link>
                 </div>
 
                 <div className="mt-3 flex items-end justify-between gap-2">
                   <div>
-                    <div className="text-2xl font-bold tabular-nums">
+                    <div className="text-3xl font-bold tabular-nums">
                       {info ? info.count.toLocaleString() : <span className="text-muted-foreground">…</span>}
                     </div>
-                    <div className="text-[11px] text-muted-foreground">
-                      yozuvlar · {recent > 0 ? <span className="text-green-600">+{recent} hafta</span> : "yangi yo'q"}
+                    <div className="mt-0.5 text-sm text-muted-foreground">
+                      yozuvlar · {recent > 0 ? <span className="font-medium text-green-600">+{recent} hafta</span> : "yangi yo'q"}
                     </div>
                   </div>
                   {info && info.spark.some((v) => v > 0) && (
-                    <Sparkline data={info.spark} />
+                    <Sparkline data={info.spark} width={96} height={32} />
                   )}
                 </div>
 
-                <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2 text-[11px] text-muted-foreground">
-                  <span>oxirgi: {relativeTime(info?.lastAdded ?? null)}</span>
-                  <Link href={`/admin/${r.name}`} className="text-brand hover:underline">Boshqarish →</Link>
+                <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2.5 text-sm">
+                  <span className="text-muted-foreground">oxirgi: {relativeTime(info?.lastAdded ?? null)}</span>
+                  <Link href={`/admin/${r.name}`} className="font-medium text-brand hover:underline">Boshqarish →</Link>
                 </div>
               </div>
             );
@@ -207,23 +216,23 @@ export default function AdminHome() {
       {/* ── Recent activity preview ──────────────────────────────────── */}
       <section>
         <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">So&apos;nggi faoliyat</h2>
-          <Link href="/admin/logs" className="text-xs text-brand hover:underline">Hammasi →</Link>
+          <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">So&apos;nggi faoliyat</h2>
+          <Link href="/admin/logs" className="text-sm font-medium text-brand hover:underline">Hammasi →</Link>
         </div>
-        <div className="rounded-2xl border border-border bg-background p-4">
+        <div className="rounded-2xl border border-border bg-background p-5">
           {!stats ? (
             <p className="text-sm text-muted-foreground">Yuklanmoqda…</p>
           ) : stats.recentEvents.length === 0 ? (
             <p className="text-sm text-muted-foreground">Hali tadbirlar yo&apos;q.</p>
           ) : (
-            <ul className="space-y-2 text-sm">
+            <ul className="space-y-2.5 text-sm">
               {stats.recentEvents.slice(0, 8).map((e, i) => (
-                <li key={i} className="flex items-center justify-between gap-3 border-b border-border/40 pb-1.5 last:border-0">
+                <li key={i} className="flex items-center justify-between gap-3 border-b border-border/40 pb-2 last:border-0">
                   <span className="min-w-0 truncate">
-                    <b className="font-medium">{e.email}</b>{" "}
+                    <b className="font-semibold">{e.email}</b>{" "}
                     <span className="text-muted-foreground">{EVENT_LABELS[e.type] ?? e.type}</span>
                   </span>
-                  <span className="shrink-0 text-xs text-muted-foreground">{relativeTime(e.createdAt)}</span>
+                  <span className="shrink-0 text-xs font-medium text-muted-foreground">{relativeTime(e.createdAt)}</span>
                 </li>
               ))}
             </ul>

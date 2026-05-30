@@ -66,11 +66,11 @@ function relativeTime(iso: string) {
 function Kpi({ icon: Icon, label, value, accent }: { icon: typeof Zap; label: string; value: number | string; accent?: string }) {
   return (
     <div className="rounded-2xl border border-border bg-background p-4">
-      <div className={`mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg ${accent ?? "bg-brand/10 text-brand"}`}>
+      <div className={`mb-2 inline-flex h-9 w-9 items-center justify-center rounded-lg ${accent ?? "bg-brand/10 text-brand"}`}>
         <Icon className="h-4 w-4" />
       </div>
-      <div className="text-xl font-bold tabular-nums">{value}</div>
-      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-2xl font-bold tabular-nums">{value}</div>
+      <div className="mt-0.5 text-sm font-medium text-muted-foreground">{label}</div>
     </div>
   );
 }
@@ -136,21 +136,21 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
     <div className="space-y-6">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <Link href="/admin/users" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-3 w-3" /> Foydalanuvchilar
+          <Link href="/admin/users" className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-3.5 w-3.5" /> Foydalanuvchilar
           </Link>
-          <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold tracking-tight">
+          <h1 className="mt-1.5 flex flex-wrap items-center gap-2 text-2xl font-bold tracking-tight sm:text-3xl">
             {u.email}
-            {u.role === "admin" && <span className="rounded bg-brand/15 px-2 py-0.5 text-xs font-medium text-brand">ADMIN</span>}
-            {u.blocked && <span className="rounded bg-red-500/15 px-2 py-0.5 text-xs font-medium text-red-600">BLOKLANGAN</span>}
+            {u.role === "admin" && <span className="rounded bg-brand/15 px-2 py-0.5 text-xs font-bold uppercase text-brand">ADMIN</span>}
+            {u.blocked && <span className="rounded bg-red-500/15 px-2 py-0.5 text-xs font-bold uppercase text-red-600">BLOKLANGAN</span>}
           </h1>
-          <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" /> {u.email}</span>
-            <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" /> ro&apos;yxatdan: {fmtDate(u.registered_at)}</span>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> {u.email}</span>
+            <span className="inline-flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> ro&apos;yxatdan: {fmtDate(u.registered_at)}</span>
             <span>Oxirgi faollik: {u.last_seen_at ? relativeTime(u.last_seen_at) : "—"}</span>
           </div>
           {u.blocked_reason && (
-            <p className="mt-2 text-xs text-red-600">Bloklash sababi: <b>{u.blocked_reason}</b> · {fmtDate(u.blocked_at)}</p>
+            <p className="mt-2 text-sm text-red-600">Bloklash sababi: <b>{u.blocked_reason}</b> · {fmtDate(u.blocked_at)}</p>
           )}
         </div>
         <div className="flex flex-wrap gap-2">
@@ -185,30 +185,30 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
       {/* ── Profile / plan summary ───────────────────────────────────── */}
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard title="Profil va reja">
-          <dl className="grid grid-cols-2 gap-3 text-sm">
+          <dl className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <dt className="text-xs text-muted-foreground">Joriy daraja</dt>
-              <dd className="mt-0.5 font-medium">{currentLv == null ? "—" : currentLv === 0 ? "Boshlovchi" : `HSK ${currentLv}`}</dd>
+              <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Joriy daraja</dt>
+              <dd className="mt-1 text-base font-semibold">{currentLv == null ? "—" : currentLv === 0 ? "Boshlovchi" : `HSK ${currentLv}`}</dd>
             </div>
             <div>
-              <dt className="text-xs text-muted-foreground">Maqsad daraja</dt>
-              <dd className="mt-0.5 font-medium">{targetLv == null ? "—" : `HSK ${targetLv}`}</dd>
+              <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Maqsad daraja</dt>
+              <dd className="mt-1 text-base font-semibold">{targetLv == null ? "—" : `HSK ${targetLv}`}</dd>
             </div>
             <div>
-              <dt className="text-xs text-muted-foreground">Maqsad turi</dt>
-              <dd className="mt-0.5 font-medium">{goal ? (GOAL_LABELS[goal] ?? goal) : "—"}</dd>
+              <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Maqsad turi</dt>
+              <dd className="mt-1 text-base font-semibold">{goal ? (GOAL_LABELS[goal] ?? goal) : "—"}</dd>
             </div>
             <div>
-              <dt className="text-xs text-muted-foreground">Onboarding</dt>
-              <dd className="mt-0.5 font-medium">{onboardedAt ? `tugatgan · ${fmtDate(onboardedAt)}` : "tugatmagan"}</dd>
+              <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Onboarding</dt>
+              <dd className="mt-1 text-base font-semibold">{onboardedAt ? `tugatgan · ${fmtDate(onboardedAt)}` : "tugatmagan"}</dd>
             </div>
             <div>
-              <dt className="text-xs text-muted-foreground">Oxirgi kirish</dt>
-              <dd className="mt-0.5 font-medium">{fmtDate(u.last_sign_in_at)}</dd>
+              <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Oxirgi kirish</dt>
+              <dd className="mt-1 text-base font-semibold">{fmtDate(u.last_sign_in_at)}</dd>
             </div>
             <div>
-              <dt className="text-xs text-muted-foreground">Rol</dt>
-              <dd className="mt-0.5 font-medium">{u.role}</dd>
+              <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Rol</dt>
+              <dd className="mt-1 text-base font-semibold">{u.role}</dd>
             </div>
           </dl>
         </ChartCard>
@@ -233,13 +233,13 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-b border-border text-xs uppercase text-muted-foreground">
+              <thead className="border-b border-border text-xs font-semibold uppercase text-muted-foreground">
                 <tr>
-                  <th className="px-2 py-2 text-left">Sana</th>
-                  <th className="px-2 py-2 text-left">HSK</th>
-                  <th className="px-2 py-2 text-right">Ball</th>
-                  <th className="px-2 py-2 text-right">%</th>
-                  <th className="px-2 py-2 text-left">Natija</th>
+                  <th className="px-3 py-2.5 text-left">Sana</th>
+                  <th className="px-3 py-2.5 text-left">HSK</th>
+                  <th className="px-3 py-2.5 text-right">Ball</th>
+                  <th className="px-3 py-2.5 text-right">%</th>
+                  <th className="px-3 py-2.5 text-left">Natija</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -250,12 +250,12 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                   const pct = total > 0 ? Math.round((e.score / total) * 100) : 0;
                   return (
                     <tr key={e.id}>
-                      <td className="px-2 py-2 text-muted-foreground">{fmtDate(e.created_at)}</td>
-                      <td className="px-2 py-2 font-medium">HSK {e.level}</td>
-                      <td className="px-2 py-2 text-right tabular-nums">{e.score}{total ? ` / ${total}` : ""}</td>
-                      <td className="px-2 py-2 text-right tabular-nums">{pct}%</td>
-                      <td className="px-2 py-2">
-                        <span className={`rounded px-2 py-0.5 text-[10px] font-medium ${passed ? "bg-green-500/15 text-green-600" : "bg-red-500/15 text-red-600"}`}>
+                      <td className="px-3 py-2.5 text-muted-foreground">{fmtDate(e.created_at)}</td>
+                      <td className="px-3 py-2.5 font-semibold">HSK {e.level}</td>
+                      <td className="px-3 py-2.5 text-right font-medium tabular-nums">{e.score}{total ? ` / ${total}` : ""}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">{pct}%</td>
+                      <td className="px-3 py-2.5">
+                        <span className={`rounded px-2 py-0.5 text-xs font-semibold ${passed ? "bg-green-500/15 text-green-600" : "bg-red-500/15 text-red-600"}`}>
                           {passed ? "O'tdi" : "O'tmadi"}
                         </span>
                       </td>
@@ -273,21 +273,21 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
         {data.events.length === 0 ? (
           <p className="text-sm text-muted-foreground">Hali tadbir yo&apos;q.</p>
         ) : (
-          <ul className="max-h-96 space-y-2 overflow-y-auto pr-1 text-sm">
+          <ul className="max-h-96 space-y-2.5 overflow-y-auto pr-1 text-sm">
             {data.events.map((e, i) => {
               const color = PALETTE[i % PALETTE.length];
               return (
-                <li key={i} className="flex items-center gap-3 border-b border-border/40 pb-1.5 last:border-0">
-                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: color }} />
+                <li key={i} className="flex items-center gap-3 border-b border-border/40 pb-2 last:border-0">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color }} />
                   <span className="min-w-0 flex-1 truncate">
-                    <b className="font-medium">{EVENT_LABELS[e.event_type] ?? e.event_type}</b>
+                    <b className="font-semibold">{EVENT_LABELS[e.event_type] ?? e.event_type}</b>
                     {!!e.payload && Object.keys(e.payload as object).length > 0 && (
                       <span className="ml-2 text-xs text-muted-foreground">
                         {JSON.stringify(e.payload).slice(0, 80)}
                       </span>
                     )}
                   </span>
-                  <span className="shrink-0 text-xs text-muted-foreground">{relativeTime(e.created_at)}</span>
+                  <span className="shrink-0 text-xs font-medium text-muted-foreground">{relativeTime(e.created_at)}</span>
                 </li>
               );
             })}

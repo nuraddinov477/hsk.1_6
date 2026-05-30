@@ -31,10 +31,10 @@ export function ChartCard({
 }) {
   const wide = span === "full" ? "lg:col-span-2" : "";
   return (
-    <div className={`rounded-2xl border border-border bg-background p-4 ${wide}`}>
+    <div className={`rounded-2xl border border-border bg-background p-5 ${wide}`}>
       <div className="mb-3 flex items-baseline justify-between gap-2">
-        <h3 className="text-sm font-semibold">{title}</h3>
-        {hint && <span className="text-[10px] text-muted-foreground">{hint}</span>}
+        <h3 className="text-base font-bold tracking-tight">{title}</h3>
+        {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
       </div>
       {children}
     </div>
@@ -74,7 +74,7 @@ export function AreaChart({
       {gridYs.map((g, i) => (
         <g key={i}>
           <line x1={padL} y1={g.y} x2={W - padR} y2={g.y} stroke="var(--border)" strokeWidth="1" />
-          <text x={padL - 6} y={g.y + 3} textAnchor="end" className="fill-muted-foreground" fontSize="9">{g.label}</text>
+          <text x={padL - 6} y={g.y + 3} textAnchor="end" className="fill-muted-foreground" fontSize="11">{g.label}</text>
         </g>
       ))}
       <polygon points={areaUsers} fill="#dc2626" fillOpacity="0.12" />
@@ -86,13 +86,13 @@ export function AreaChart({
         </circle>
       ))}
       {tickIdxs.map((i) => (
-        <text key={i} x={xFor(i)} y={H - 6} textAnchor="middle" className="fill-muted-foreground" fontSize="9">
+        <text key={i} x={xFor(i)} y={H - 6} textAnchor="middle" className="fill-muted-foreground" fontSize="11">
           {data[i]?.date.slice(5)}
         </text>
       ))}
       <g transform={`translate(${padL}, ${H - 4})`}>
-        <rect x="0" y="-8" width="8" height="3" fill="#dc2626" /><text x="12" y="-5" fontSize="9" className="fill-muted-foreground">Foydalanuvchilar</text>
-        <rect x="92" y="-8" width="8" height="3" fill="#2563eb" /><text x="104" y="-5" fontSize="9" className="fill-muted-foreground">Sessiyalar</text>
+        <rect x="0" y="-8" width="8" height="3" fill="#dc2626" /><text x="12" y="-5" fontSize="11" className="fill-muted-foreground">Foydalanuvchilar</text>
+        <rect x="92" y="-8" width="8" height="3" fill="#2563eb" /><text x="104" y="-5" fontSize="11" className="fill-muted-foreground">Sessiyalar</text>
       </g>
     </svg>
   );
@@ -118,13 +118,13 @@ export function BarsChart({
               className="w-full rounded-t bg-brand/30 transition group-hover:bg-brand"
               style={{ height: `${(d.value / max) * 100}%`, minHeight: d.value > 0 ? 2 : 0 }}
             />
-            <div className="pointer-events-none absolute bottom-full left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-[10px] text-background group-hover:block">
+            <div className="pointer-events-none absolute bottom-full left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-xs font-medium text-background group-hover:block">
               {d.label}: {d.value}
             </div>
           </div>
         ))}
       </div>
-      <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+      <div className="mt-1.5 flex justify-between text-xs text-muted-foreground">
         {data.map((d, i) => (
           <span key={i} className="flex-1 text-center">{i % labelEvery === 0 ? d.label : ""}</span>
         ))}
@@ -143,20 +143,20 @@ export function HBarsChart({
 }) {
   const max = Math.max(1, ...data.map((d) => d.value));
   return (
-    <ul className="space-y-2">
+    <ul className="space-y-2.5">
       {data.map((d, i) => {
         const w = (d.value / max) * 100;
         const color = d.color ?? PALETTE[i % PALETTE.length];
         return (
           <li key={i}>
-            <div className="mb-1 flex items-baseline justify-between gap-2 text-xs">
+            <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
               <span className="min-w-0 truncate font-medium">{d.label}</span>
               <span className="shrink-0 tabular-nums text-muted-foreground">
-                {formatValue ? formatValue(d.value) : d.value}
-                {d.hint && <span className="ml-1 text-[10px]">{d.hint}</span>}
+                <b className="text-foreground">{formatValue ? formatValue(d.value) : d.value}</b>
+                {d.hint && <span className="ml-1.5 text-xs">{d.hint}</span>}
               </span>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-muted">
+            <div className="h-2.5 overflow-hidden rounded-full bg-muted">
               <div className="h-full rounded-full transition-all" style={{ width: `${w}%`, background: color }} />
             </div>
           </li>
@@ -215,23 +215,23 @@ export function DonutChart({
         </svg>
         {centerLabel && (
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <div className="text-xl font-bold tabular-nums">{centerLabel.value}</div>
-            <div className="text-[10px] text-muted-foreground">{centerLabel.hint}</div>
+            <div className="text-2xl font-bold tabular-nums">{centerLabel.value}</div>
+            <div className="text-xs text-muted-foreground">{centerLabel.hint}</div>
           </div>
         )}
       </div>
-      <ul className="flex min-w-0 flex-1 flex-col gap-1.5 text-xs">
+      <ul className="flex min-w-0 flex-1 flex-col gap-2 text-sm">
         {data.map((d, i) => {
           const color = d.color ?? PALETTE[i % PALETTE.length];
           const pct = total === 0 ? 0 : Math.round((d.value / total) * 100);
           return (
             <li key={i} className="flex items-center justify-between gap-2">
-              <span className="flex min-w-0 items-center gap-1.5">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: color }} />
-                <span className="truncate">{d.label}</span>
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="h-3 w-3 shrink-0 rounded-sm" style={{ background: color }} />
+                <span className="truncate font-medium">{d.label}</span>
               </span>
               <span className="shrink-0 tabular-nums text-muted-foreground">
-                {d.value} <span className="text-[10px]">({pct}%)</span>
+                <b className="text-foreground">{d.value}</b> <span className="text-xs">({pct}%)</span>
               </span>
             </li>
           );
@@ -277,7 +277,7 @@ export function Funnel({
 }) {
   const max = Math.max(1, ...steps.map((s) => s.value));
   return (
-    <ul className="space-y-2">
+    <ul className="space-y-2.5">
       {steps.map((s, i) => {
         const w = (s.value / max) * 100;
         const prev = i === 0 ? s.value : steps[i - 1].value;
@@ -285,13 +285,13 @@ export function Funnel({
         const color = PALETTE[i % PALETTE.length];
         return (
           <li key={i}>
-            <div className="mb-1 flex items-baseline justify-between gap-2 text-xs">
+            <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
               <span className="font-medium">
-                <span className="text-[10px] text-muted-foreground">{i + 1}.</span> {s.label}
+                <span className="mr-1 text-xs text-muted-foreground">{i + 1}.</span>{s.label}
               </span>
               <span className="shrink-0 tabular-nums">
                 <b>{s.value}</b>
-                {i > 0 && <span className={`ml-1 text-[10px] ${dropPct > 0 ? "text-red-500" : "text-muted-foreground"}`}>−{dropPct}%</span>}
+                {i > 0 && <span className={`ml-1.5 text-xs ${dropPct > 0 ? "text-red-500" : "text-muted-foreground"}`}>−{dropPct}%</span>}
               </span>
             </div>
             <div className="h-3 overflow-hidden rounded-full bg-muted">
@@ -336,15 +336,15 @@ export function StackedBars({
           );
         })}
       </div>
-      <div className="mt-1 flex gap-2 text-[10px] text-muted-foreground">
+      <div className="mt-1.5 flex gap-2 text-xs text-muted-foreground">
         {data.map((d, i) => (
           <span key={i} className="flex-1 text-center font-medium">{d.label}</span>
         ))}
       </div>
       <div className="mt-3 flex flex-wrap gap-3">
         {keys.map((k) => (
-          <span key={k.key} className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <span className="h-2.5 w-2.5 rounded-sm" style={{ background: k.color }} />
+          <span key={k.key} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+            <span className="h-3 w-3 rounded-sm" style={{ background: k.color }} />
             {k.label}
           </span>
         ))}

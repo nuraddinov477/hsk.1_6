@@ -98,7 +98,7 @@ export function AdminSearch() {
         placeholder="Qidirish (email, hanzi, sarlavha)…"
         className="h-10 w-full rounded-full border border-border bg-background pl-9 pr-16 text-sm outline-none focus:border-brand"
       />
-      <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">⌘K</kbd>
+      <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded border border-border bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">⌘K</kbd>
       {q && (
         <button onClick={() => { setQ(""); setHits([]); inputRef.current?.focus(); }} className="absolute right-12 top-1/2 -translate-y-1/2 rounded p-1 hover:bg-muted" aria-label="Tozalash">
           <X className="h-3.5 w-3.5" />
@@ -123,13 +123,13 @@ export function AdminSearch() {
                       href={h.href}
                       onClick={() => { setOpen(false); setQ(""); }}
                       onMouseEnter={() => setIdx(i)}
-                      className={`flex items-start gap-3 px-3 py-2 text-sm transition ${i === idx ? "bg-brand/10" : "hover:bg-muted"}`}
+                      className={`flex items-start gap-3 px-3 py-2.5 text-sm transition ${i === idx ? "bg-brand/10" : "hover:bg-muted"}`}
                     >
                       <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="truncate font-medium">{h.label}</span>
-                          <span className="rounded bg-muted px-1.5 py-0.5 text-[9px] uppercase text-muted-foreground">{TYPE_LABEL[h.type]}</span>
+                          <span className="truncate font-semibold">{h.label}</span>
+                          <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs font-medium uppercase text-muted-foreground">{TYPE_LABEL[h.type]}</span>
                         </div>
                         {h.sublabel && <p className="mt-0.5 truncate text-xs text-muted-foreground">{h.sublabel}</p>}
                       </div>

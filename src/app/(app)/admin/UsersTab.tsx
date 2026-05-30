@@ -88,43 +88,43 @@ export function UsersTab() {
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-xs text-muted-foreground">
+            <thead className="bg-muted/50 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="px-3 py-2 text-left">Email</th>
-                <th className="px-3 py-2 text-right">XP</th>
-                <th className="px-3 py-2 text-right">Streak</th>
-                <th className="px-3 py-2 text-right">Vaqt</th>
-                <th className="px-3 py-2 text-right">So'z</th>
-                <th className="px-3 py-2 text-right">Dars</th>
-                <th className="px-3 py-2 text-right">Imtihon</th>
-                <th className="px-3 py-2 text-left">Oxirgi faollik</th>
-                <th className="px-3 py-2 text-right">Amallar</th>
+                <th className="px-3 py-3 text-left">Email</th>
+                <th className="px-3 py-3 text-right">XP</th>
+                <th className="px-3 py-3 text-right">Streak</th>
+                <th className="px-3 py-3 text-right">Vaqt</th>
+                <th className="px-3 py-3 text-right">So'z</th>
+                <th className="px-3 py-3 text-right">Dars</th>
+                <th className="px-3 py-3 text-right">Imtihon</th>
+                <th className="px-3 py-3 text-left">Oxirgi faollik</th>
+                <th className="px-3 py-3 text-right">Amallar</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {filtered.map((u) => (
                 <tr key={u.user_id} className={u.blocked ? "bg-red-500/5" : undefined}>
-                  <td className="px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate">{u.email}</span>
+                  <td className="px-3 py-2.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="truncate font-medium">{u.email}</span>
                       {u.role === "admin" && (
-                        <span className="rounded bg-brand/15 px-1.5 py-0.5 text-[10px] font-medium text-brand">ADMIN</span>
+                        <span className="rounded bg-brand/15 px-1.5 py-0.5 text-xs font-bold uppercase text-brand">ADMIN</span>
                       )}
                       {u.blocked && (
-                        <span className="rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] font-medium text-red-600">BLOKLANGAN</span>
+                        <span className="rounded bg-red-500/15 px-1.5 py-0.5 text-xs font-bold uppercase text-red-600">BLOKLANGAN</span>
                       )}
                     </div>
                     {u.blocked_reason && (
-                      <div className="mt-0.5 text-[11px] text-red-600">Sabab: {u.blocked_reason}</div>
+                      <div className="mt-1 text-xs text-red-600">Sabab: <b>{u.blocked_reason}</b></div>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{u.xp}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{u.streak}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtMinutes(u.minutes_total ?? 0)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{u.vocab_learned}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{u.lessons_completed}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{u.exams_taken}</td>
-                  <td className="px-3 py-2 text-muted-foreground">{relativeTime(u.last_seen_at)}</td>
+                  <td className="px-3 py-2.5 text-right font-medium tabular-nums">{u.xp}</td>
+                  <td className="px-3 py-2.5 text-right font-medium tabular-nums">{u.streak}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">{fmtMinutes(u.minutes_total ?? 0)}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums">{u.vocab_learned}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums">{u.lessons_completed}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums">{u.exams_taken}</td>
+                  <td className="px-3 py-2.5 text-muted-foreground">{relativeTime(u.last_seen_at)}</td>
                   <td className="px-3 py-2">
                     <div className="flex justify-end gap-1">
                       <Link

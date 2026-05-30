@@ -42,9 +42,9 @@ function Pill({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-medium transition disabled:opacity-50 ${cls}`}
+      className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-semibold transition disabled:opacity-50 ${cls}`}
     >
-      <Icon className="h-3 w-3" /> {label}
+      <Icon className="h-3.5 w-3.5" /> {label}
     </button>
   );
 }
@@ -85,10 +85,10 @@ export function OverridesPanel({ userId }: { userId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
         <span>
           Har bir modul / funksiyaga shu foydalanuvchi uchun ruxsat bering yoki o&apos;chiring.
-          <span className="ml-1 font-medium text-foreground">{overriddenCount}</span> ta o&apos;zgartirilgan.
+          <span className="ml-1 font-bold text-foreground">{overriddenCount}</span> ta o&apos;zgartirilgan.
         </span>
         {overriddenCount > 0 && (
           <button
@@ -103,16 +103,16 @@ export function OverridesPanel({ userId }: { userId: string }) {
               }
               await load();
             }}
-            className="inline-flex h-7 items-center gap-1 rounded-lg border border-border bg-background px-2.5 text-xs hover:bg-muted"
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-3 text-sm font-medium hover:bg-muted"
           >
-            <RotateCcw className="h-3 w-3" /> Hammasini global qilish
+            <RotateCcw className="h-3.5 w-3.5" /> Hammasini global qilish
           </button>
         )}
       </div>
 
       {Object.entries(byCategory).map(([cat, items]) => (
-        <section key={cat} className="space-y-1.5">
-          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <section key={cat} className="space-y-2">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             {CATEGORY_LABELS[cat] ?? cat}
           </h3>
           <ul className="divide-y divide-border rounded-xl border border-border">
@@ -121,22 +121,22 @@ export function OverridesPanel({ userId }: { userId: string }) {
               const { state, effective } = stateOf(f.enabled, ov);
               const isOverridden = state !== "inherit";
               return (
-                <li key={f.key} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
+                <li key={f.key} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className={`h-2 w-2 shrink-0 rounded-full ${effective ? "bg-green-500" : "bg-red-500"}`} />
-                      <span className="font-medium">{f.description || f.key}</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${effective ? "bg-green-500" : "bg-red-500"}`} />
+                      <span className="text-base font-semibold">{f.description || f.key}</span>
                       {isOverridden && (
-                        <span className="rounded bg-brand/15 px-1.5 py-0.5 text-[9px] font-medium uppercase text-brand">
+                        <span className="rounded bg-brand/15 px-1.5 py-0.5 text-xs font-bold uppercase text-brand">
                           Maxsus
                         </span>
                       )}
                     </div>
-                    <div className="ml-4 font-mono text-[10.5px] text-muted-foreground">
-                      {f.key} · global: {f.enabled ? "yoqilgan" : "o'chirilgan"}
+                    <div className="ml-[18px] mt-0.5 font-mono text-xs text-muted-foreground">
+                      {f.key} · global: <b className={f.enabled ? "text-green-600" : "text-red-600"}>{f.enabled ? "yoqilgan" : "o'chirilgan"}</b>
                     </div>
                     {ov?.reason && (
-                      <div className="ml-4 mt-0.5 text-[11px] text-red-600">Sabab: {ov.reason}</div>
+                      <div className="ml-[18px] mt-1 text-sm text-red-600">Sabab: <b>{ov.reason}</b></div>
                     )}
                   </div>
                   <div className="flex shrink-0 gap-1">

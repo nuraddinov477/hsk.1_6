@@ -70,8 +70,8 @@ function Kpi({
         <Icon className="h-4 w-4" />
       </div>
       <div className="text-2xl font-bold tabular-nums">{value}</div>
-      <div className="text-xs text-muted-foreground">{label}</div>
-      {hint && <div className="mt-0.5 text-[10px] text-muted-foreground/80">{hint}</div>}
+      <div className="mt-0.5 text-sm font-medium text-muted-foreground">{label}</div>
+      {hint && <div className="mt-0.5 text-xs text-muted-foreground/80">{hint}</div>}
     </div>
   );
 }
@@ -84,14 +84,17 @@ export function StatsTab() {
   useEffect(() => {
     let alive = true;
     async function load() {
+      if (document.hidden) return;          // skip polling when tab is hidden
       const r = await fetch(`/api/admin/stats?range=${range}`);
       if (!alive) return;
       if (r.ok) setData(await r.json());
       setLoading(false);
     }
     void load();
-    const t = setInterval(load, 30_000);
-    return () => { alive = false; clearInterval(t); };
+    const t = setInterval(load, 60_000);    // heavy query — once per minute
+    const onVis = () => { if (!document.hidden) void load(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { alive = false; clearInterval(t); document.removeEventListener("visibilitychange", onVis); };
   }, [range]);
 
   if (loading) return <p className="text-sm text-muted-foreground">Yuklanmoqda…</p>;
@@ -138,15 +141,15 @@ export function StatsTab() {
     <div className="space-y-6">
       {/* ── Time-range selector ─────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs text-muted-foreground">
-          Davr: <b>{range} kun</b> · har 30 soniyada yangilanadi
+        <p className="text-sm text-muted-foreground">
+          Davr: <b className="text-foreground">{range} kun</b> · har 60 soniyada yangilanadi
         </p>
-        <div className="inline-flex h-9 rounded-full border border-border bg-background p-0.5 text-xs">
+        <div className="inline-flex h-9 rounded-full border border-border bg-background p-0.5 text-sm font-medium">
           {([7, 30, 90] as Range[]).map((r) => (
             <button
               key={r}
               onClick={() => setRange(r)}
-              className={`px-3 rounded-full transition ${range === r ? "bg-brand text-brand-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              className={`px-3.5 rounded-full transition ${range === r ? "bg-brand text-brand-foreground" : "text-muted-foreground hover:text-foreground"}`}
             >
               {r} kun
             </button>
@@ -228,8 +231,8 @@ export function StatsTab() {
           <ul className="space-y-3">
             {data.retention.map((r) => (
               <li key={r.label}>
-                <div className="mb-1 flex items-baseline justify-between text-xs">
-                  <span className="font-medium">{r.label}</span>
+                <div className="mb-1 flex items-baseline justify-between text-sm">
+                  <span className="font-semibold">{r.label}</span>
                   <span className="tabular-nums"><b>{r.value}%</b></span>
                 </div>
                 <div className="h-3 overflow-hidden rounded-full bg-muted">
@@ -240,7 +243,7 @@ export function StatsTab() {
                 </div>
               </li>
             ))}
-            <li className="pt-1 text-[11px] text-muted-foreground">
+            <li className="pt-1 text-xs text-muted-foreground">
               D1 — ro&apos;yxatdan keyin 1+ kundan keyin qaytdi
             </li>
           </ul>
@@ -253,8 +256,8 @@ export function StatsTab() {
             <ul className="space-y-3">
               {data.examPassRate.map((e) => (
                 <li key={e.level}>
-                  <div className="mb-1 flex items-baseline justify-between text-xs">
-                    <span className="font-medium">HSK {e.level}</span>
+                  <div className="mb-1 flex items-baseline justify-between text-sm">
+                    <span className="font-semibold">HSK {e.level}</span>
                     <span className="tabular-nums text-muted-foreground">
                       <b className="text-foreground">{e.rate}%</b> · {e.passed}/{e.total}
                     </span>
@@ -305,18 +308,18 @@ export function StatsTab() {
       </div>
 
       {/* ── Recent events feed ───────────────────────────────────────── */}
-      <ChartCard title="So'nggi tadbirlar" hint="real-vaqt · 30 s yangilanadi">
+      <ChartCard title="So'nggi tadbirlar" hint="real-vaqt · 60 s yangilanadi">
         {data.recentEvents.length === 0 ? (
           <p className="text-sm text-muted-foreground">Hali hech narsa qilinmagan.</p>
         ) : (
-          <ul className="max-h-72 space-y-2 overflow-y-auto pr-1 text-sm">
+          <ul className="max-h-72 space-y-2.5 overflow-y-auto pr-1 text-sm">
             {data.recentEvents.map((e, i) => (
-              <li key={i} className="flex items-center justify-between gap-3 border-b border-border/40 pb-1.5 last:border-0">
+              <li key={i} className="flex items-center justify-between gap-3 border-b border-border/40 pb-2 last:border-0">
                 <span className="min-w-0 truncate">
-                  <b className="font-medium">{e.email}</b>{" "}
+                  <b className="font-semibold">{e.email}</b>{" "}
                   <span className="text-muted-foreground">{EVENT_LABELS[e.type] ?? e.type}</span>
                 </span>
-                <span className="shrink-0 text-xs text-muted-foreground">{relativeTime(e.createdAt)}</span>
+                <span className="shrink-0 text-xs font-medium text-muted-foreground">{relativeTime(e.createdAt)}</span>
               </li>
             ))}
           </ul>
